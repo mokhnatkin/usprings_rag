@@ -37,3 +37,10 @@
 
 - [`docs/overview.md`](docs/overview.md) - обзор проекта и архитектура пилота
 - [`docs/open-questions.md`](docs/open-questions.md) - открытые вопросы и решения
+
+## Репозиторий
+
+- Источник правды (`origin`): GitLab - https://gtl.usteel.ru/usprings/usprings_rag
+- Бэкап-зеркало: GitHub - https://github.com/mokhnatkin/usprings_rag.git
+  (репо ещё не создан; push-mirror настраивается по общему плану УПЗ)
+- Ветка: `main`.
