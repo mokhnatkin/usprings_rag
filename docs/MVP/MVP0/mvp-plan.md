@@ -34,7 +34,7 @@
 | Векторное хранилище | PostgreSQL 16 + pgvector (косинус, HNSW-индекс) |
 | Парсинг PDF | `pypdf` (текстовый слой; при проблемах с версткой - `pdfplumber`) |
 | Эмбеддинги | Локальная multilingual-модель BGE-m3 (dim 1024) через `sentence-transformers`, in-process |
-| LLM | OpenRouter (через OpenAI-совместимый SDK с base_url OpenRouter) |
+| LLM | OpenRouter (OpenAI-совместимый SDK, base_url OpenRouter); модель по умолчанию `qwen/qwen3-next-80b-a3b-instruct:free`, ID в `.env` |
 | Фронтенд | Jinja2-шаблон + минимальный JS (fetch) |
 | Инфраструктура | Docker Compose, on-premise |
 
@@ -97,3 +97,8 @@
 - `top-k` для поиска.
 - Порог сходства для отказа (метрика + значение).
 - Конкретная LLM-модель на OpenRouter (баланс качество/цена, поддержка русского).
+  Стартуем с бесплатной `qwen/qwen3-next-80b-a3b-instruct:free` (сильный русский,
+  следование инструкции «только по контексту», MoE - быстрый инференс, контекст 262K);
+  A/B-сравнение с `google/gemma-4-31b-it:free` на реальных вопросах. Ограничения free-тира:
+  лимиты ~20 req/min и приватность (провайдер может логировать/обучаться - см. `open-questions.md`),
+  для прода - платный тир с zero-data-retention. ID модели меняется через `.env`.
