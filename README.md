@@ -23,6 +23,7 @@
 
 - Бэкенд: Python + FastAPI
 - Векторное хранилище: PostgreSQL + pgvector
+- Эмбеддинги: локальная multilingual-модель (BGE-m3), on-premise
 - Фронтенд: простой (серверные шаблоны / HTML+JS), с возможностью нарастить до React
 - LLM: OpenRouter
 - Инфраструктура: Docker Compose, on-premise
@@ -37,6 +38,7 @@
 
 - [`docs/overview.md`](docs/overview.md) - обзор проекта и архитектура пилота
 - [`docs/open-questions.md`](docs/open-questions.md) - открытые вопросы и решения
+- [`docs/MVP/MVP0/mvp-plan.md`](docs/MVP/MVP0/mvp-plan.md) - план развёртывания MVP (стек и этапы)
 
 ## Репозиторий
 
