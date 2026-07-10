@@ -11,8 +11,8 @@
 
 | Этап | Название | Статус | Дата | Примечание |
 |-|-|-|-|-|
-| 1 | Каркас и окружение | не начат | - | - |
-| 2 | Схема БД и миграции (SQLAlchemy + Alembic) | не начат | - | - |
+| 1 | Каркас и окружение | сделано | 2026-07-10 | БД на порту 5433 (5432 занят) |
+| 2 | Схема БД и миграции (SQLAlchemy + Alembic) | сделано | 2026-07-10 | alembic check чист |
 | 3 | Ingest: парсинг и чанкинг | не начат | - | - |
 | 4 | Ingest: эмбеддинги и запись в БД | не начат | - | - |
 | 5 | Семантический поиск | не начат | - | - |
@@ -33,4 +33,37 @@
 - Вопросы/решения: см. open-questions.md (пункт ...)
 -->
 
-_Пока пусто - реализация не начата._
+### 2026-07-10. Этап 2 - Схема БД и миграции (SQLAlchemy + Alembic)
+- Статус: сделано
+- Что сделано: ORM-модели `Document`, `Chunk` (`models.py`), тип `vector` через
+  `pgvector.sqlalchemy.Vector`; `db.py` - engine + `SessionLocal`. Alembic настроен
+  (`alembic.ini`, `alembic/env.py` берёт URL и metadata из приложения). Миграции:
+  `0001` - расширение vector + таблицы, `0002` - HNSW-индекс (`vector_cosine_ops`,
+  m=16, ef_construction=64) и B-tree по `collection`.
+- Проверка приёмки: `alembic upgrade head` создаёт расширение, таблицы и индексы
+  (проверено в psql); `downgrade base` -> `upgrade head` повторяемы; `alembic check`
+  сообщает "No new upgrade operations detected".
+- Правки по ходу:
+  - `alembic.ini` читается configparser в локальной кодировке Windows (cp1252) -
+    убрал кириллицу из ini (комментарий на английском), иначе UnicodeDecodeError.
+  - `created_at` в модели явно `DateTime(timezone=True)`, чтобы совпасть с `timestamptz`
+    в миграции (иначе `alembic check` видел расхождение типа).
+
+### 2026-07-10. Этап 1 - Каркас и окружение
+- Статус: сделано
+- Что сделано: `uv`-проект (`pyproject.toml`, src-layout, пакет `usprings_rag`),
+  зависимости через `uv add`; `config.py` (pydantic-settings, все ключи из `.env`);
+  `docker-compose.yml` с сервисом `db` (образ `pgvector/pgvector:pg16`, healthcheck,
+  volume `pgdata`). `.env`/`.env.example` дополнены ключами БД, эмбеддингов, поиска, LLM.
+- Проверка приёмки: `docker compose up -d db` -> контейнер `healthy`; расширение
+  `vector` доступно (v0.8.5); `config`/`models` импортируются, таблицы регистрируются
+  в metadata.
+- Решения/заметки:
+  - `sentence-transformers` (тянет torch, несколько ГБ) на этапах 1-2 не используется -
+    добавим на этапе 4, где он реально нужен (принцип инкрементальности).
+  - На этой машине порт 5432 занят нативным Postgres Windows - публикуем контейнер на
+    5433 (`POSTGRES_PORT=5433`, порт учтён в `DATABASE_URL`). Внутри контейнера 5432.
+    В `.env.example` дефолт оставлен 5432 с примечанием.
+
+<!-- старые записи ниже -->
+
