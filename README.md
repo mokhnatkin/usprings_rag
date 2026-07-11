@@ -30,7 +30,11 @@
 
 ## Статус
 
-Ранняя стадия: наброски и проектная документация. Кода пока нет.
+Идёт разработка MVP. Готовы этапы 1-4: окружение (Docker Compose + Postgres/pgvector),
+схема БД с миграциями (SQLAlchemy + Alembic), ingest-пайплайн (парсинг PDF, чанкинг,
+эмбеддинги BGE-m3, запись в БД, `uv run ingest`). Впереди: семантический поиск с
+калибровкой порога, генерация ответа, портал, упаковка. Журнал -
+в [`docs/MVP/MVP0/mvp-dev-plan-progress.md`](docs/MVP/MVP0/mvp-dev-plan-progress.md).
 
 ## Документация
 
@@ -39,6 +43,7 @@
 - [`docs/overview.md`](docs/overview.md) - обзор проекта и архитектура пилота
 - [`docs/open-questions.md`](docs/open-questions.md) - открытые вопросы и решения
 - [`docs/MVP/MVP0/mvp-plan.md`](docs/MVP/MVP0/mvp-plan.md) - план развёртывания MVP (стек и этапы)
+- [`docs/MVP/MVP0/mvp-dev-plan.md`](docs/MVP/MVP0/mvp-dev-plan.md) - детальный план разработки MVP
 
 ## Репозиторий
 
