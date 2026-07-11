@@ -41,6 +41,7 @@
 Проектная документация - в каталоге [`docs/`](docs/):
 
 - [`docs/overview.md`](docs/overview.md) - обзор проекта и архитектура пилота
+- [`docs/how-it-works.md`](docs/how-it-works.md) - механика работы базы знаний (RAG) для команды
 - [`docs/open-questions.md`](docs/open-questions.md) - открытые вопросы и решения
 - [`docs/MVP/MVP0/mvp-plan.md`](docs/MVP/MVP0/mvp-plan.md) - план развёртывания MVP (стек и этапы)
 - [`docs/MVP/MVP0/mvp-dev-plan.md`](docs/MVP/MVP0/mvp-dev-plan.md) - детальный план разработки MVP
