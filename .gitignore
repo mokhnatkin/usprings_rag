@@ -23,3 +23,7 @@ models/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Производные артефакты eval: пересобираются build_contexts.py / run_ab.py
+eval/contexts.json
+eval/ab-report.md

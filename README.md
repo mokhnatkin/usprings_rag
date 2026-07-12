@@ -63,6 +63,10 @@ uv run --no-sync search "вопрос"                 # проверить вы
 uv run --no-sync python eval/run_eval.py         # recall@k и распределения сходств
 uv run --no-sync python eval/run_answers.py      # прогон вопросов через полный сценарий
 uv run --no-sync pytest -q                       # тесты
+
+# A/B-сравнение LLM (регламент - docs/maintenance.md, раздел 5): секунды, не часы
+uv run --no-sync python eval/build_contexts.py                       # кэш поиска, 1 раз
+uv run --no-sync python eval/run_ab.py <модель-A> <модель-B>         # -> eval/ab-report.md
 ```
 
 Особенности запуска (проверено на Windows):

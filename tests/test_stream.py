@@ -34,7 +34,7 @@ def run_stream(monkeypatch, similarity: float, deltas: list[str]):
 
 
 def test_marker_never_reaches_client(monkeypatch):
-    text, done = run_stream(monkeypatch, 0.55, ["НЕТ_", "ОТВЕТА"])
+    text, done = run_stream(monkeypatch, 0.55, ["NO_", "ANSWER"])
     assert text == ""
     assert done.refused
     assert done.sources == []
