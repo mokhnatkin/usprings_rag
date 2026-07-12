@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     # База данных (обязательный ключ, без дефолта - падаем при отсутствии)
     database_url: str
 
+    # Папка инструкций - корень для относительных source_path и раздачи PDF.
+    # Пути в БД храним относительно неё (POSIX), чтобы они совпадали на хосте
+    # и в Docker-контейнере.
+    manuals_dir: str = "docs/manuals"
+
     # Эмбеддинги
     embedding_model: str = "BAAI/bge-m3"
     embedding_dim: int = 1024

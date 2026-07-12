@@ -17,7 +17,7 @@ from openai import OpenAI
 from sqlalchemy.orm import Session
 
 from .embeddings import EmbeddingProvider
-from .llm import generate
+from .llm import NO_ANSWER_MARKER, generate
 from .retrieval import search
 
 logger = logging.getLogger(__name__)
@@ -98,6 +98,24 @@ def answer_question(
     hits = result.relevant
     response = generate(client, question, hits, model=model)
     elapsed = time.perf_counter() - started
+
+    # Вопрос прошёл порог, но ответа во фрагментах нет (околодоменный вопрос -
+    # порог их пропускает сознательно, см. open-questions.md). Показывать под таким
+    # ответом источники нельзя - они ничего не подтверждают.
+    if NO_ANSWER_MARKER in response.text:
+        logger.info(
+            "answer verdict=no_answer_in_context best_similarity=%.4f elapsed=%.2fs",
+            result.best_similarity,
+            elapsed,
+        )
+        return Answer(
+            text=REFUSAL_TEXT,
+            refused=True,
+            sources=[],
+            best_similarity=result.best_similarity,
+            elapsed_seconds=elapsed,
+        )
+
     logger.info(
         "answer verdict=answered chunks=%d best_similarity=%.4f elapsed=%.2fs",
         len(hits),

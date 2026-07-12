@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>База знаний УПЗ - ассистент по инструкциям</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <h1>Ассистент по инструкциям</h1>
+    <p class="subtitle">
+      Задайте вопрос по инструкциям 1С ERP. Ответ формируется только по документам
+      базы знаний, со ссылками на исходные файлы.
+    </p>
+
+    <form id="ask-form">
+      <textarea id="question" rows="3" placeholder="Например: как запланировать отгрузку, если на складе нет остатков?" required></textarea>
+      <button type="submit" id="submit">Спросить</button>
+    </form>
+
+    <section id="status" class="hidden"></section>
+
+    <section id="result" class="hidden">
+      <div id="answer"></div>
+      <div id="sources-block" class="hidden">
+        <h2>Источники</h2>
+        <ul id="sources"></ul>
+      </div>
+      <p id="meta" class="meta"></p>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

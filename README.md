@@ -30,15 +30,17 @@
 
 ## Статус
 
-Идёт разработка MVP. Готовы этапы 1-5: окружение (Docker Compose + Postgres/pgvector),
+Идёт разработка MVP. Готовы этапы 1-7: окружение (Docker Compose + Postgres/pgvector),
 схема БД с миграциями (SQLAlchemy + Alembic), ingest-пайплайн (парсинг PDF, чанкинг,
-эмбеддинги BGE-m3, запись в БД, `uv run ingest`), семантический поиск с порогом
-(`uv run search "вопрос"`). Порог откалиброван на eval-наборе
-(`eval/questions.yaml` + `eval/run_eval.py`): recall@1 = 17/17,
-`SIMILARITY_THRESHOLD=0.53`. Этап 6: генерация ответа готова - `POST /ask`
-(`uv run --no-sync uvicorn usprings_rag.api:app`) отвечает по инструкциям со ссылками
-на источники либо вежливо отказывает без вызова LLM; A/B-сравнение моделей отложено
-(лимиты бесплатного тира OpenRouter). Далее: портал, упаковка. Журнал -
+эмбеддинги BGE-m3, запись в БД, `uv run ingest`), семантический поиск с откалиброванным
+порогом (recall@1 = 17/17, `SIMILARITY_THRESHOLD=0.53`), генерация ответа через
+OpenRouter и веб-портал с раздачей исходных PDF.
+
+Запуск портала: `uv run --no-sync uvicorn usprings_rag.api:app` -> http://127.0.0.1:8000
+(вопрос -> ответ со ссылками на исходные инструкции либо вежливый отказ).
+
+Осталось: этап 8 (упаковка в Docker) и незакрытый подшаг 6.4 (A/B-сравнение LLM -
+блокировали лимиты бесплатного тира OpenRouter). Журнал -
 в [`docs/MVP/MVP0/mvp-dev-plan-progress.md`](docs/MVP/MVP0/mvp-dev-plan-progress.md).
 
 ## Документация

@@ -1,0 +1,96 @@
+:root {
+  --text: #1f2430;
+  --muted: #6b7280;
+  --border: #e2e5ea;
+  --accent: #1f5fa8;
+  --refusal-bg: #fdf6e3;
+  --refusal-border: #e3c97f;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2rem 1rem;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--text);
+  background: #f7f8fa;
+  line-height: 1.55;
+}
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.75rem;
+}
+
+h1 { margin: 0 0 0.35rem; font-size: 1.5rem; }
+
+.subtitle { margin: 0 0 1.25rem; color: var(--muted); font-size: 0.95rem; }
+
+textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  resize: vertical;
+}
+
+textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+
+button {
+  margin-top: 0.75rem;
+  padding: 0.6rem 1.4rem;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:disabled { background: var(--muted); cursor: default; }
+
+#status {
+  margin-top: 1.25rem;
+  color: var(--muted);
+}
+
+#status.error { color: #b03030; }
+
+#result { margin-top: 1.5rem; }
+
+#answer {
+  white-space: pre-wrap;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfbfd;
+}
+
+/* Отказ - отдельное визуальное состояние, а не обычный ответ. */
+#result.refused #answer {
+  background: var(--refusal-bg);
+  border-color: var(--refusal-border);
+}
+
+h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+
+#sources { margin: 0; padding-left: 1.1rem; }
+
+#sources li { margin-bottom: 0.3rem; }
+
+#sources a { color: var(--accent); }
+
+.meta {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.hidden { display: none; }

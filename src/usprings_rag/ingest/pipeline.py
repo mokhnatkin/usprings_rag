@@ -33,11 +33,21 @@ def _file_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def relative_source_path(path: Path) -> str:
+    """Путь относительно папки инструкций, POSIX-разделители.
+
+    Абсолютный путь хоста не переживёт перенос в контейнер и не годится для
+    URL раздачи PDF, поэтому в БД храним относительный (напр. `IT_1C/Отгрузка.pdf`).
+    """
+    manuals_root = Path(settings.manuals_dir).resolve()
+    return path.resolve().relative_to(manuals_root).as_posix()
+
+
 def ingest_file(
     session: Session, provider: EmbeddingProvider, path: Path
 ) -> IngestResult:
     """Обработать один PDF: парсинг, чанкинг, векторизация, запись в БД."""
-    source_path = str(path)
+    source_path = relative_source_path(path)
     content_hash = _file_hash(path)
 
     existing = session.scalars(

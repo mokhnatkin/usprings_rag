@@ -1,23 +1,33 @@
-"""FastAPI: endpoint вопрос-ответ.
+"""FastAPI: портал вопрос-ответ (экран, статика, раздача исходных PDF).
 
 Модель эмбеддингов и клиент LLM создаются один раз при старте (lifespan):
 иначе первый запрос пользователя платит десятки секунд за загрузку весов BGE-m3.
 Прогрев - холостая векторизация, чтобы веса реально легли в память.
+
+Исходные PDF раздаём из папки инструкций по `/manuals/<source_path>` - в БД
+`source_path` хранится относительным (см. ingest/pipeline.py), поэтому ссылка
+одинаково работает на хосте и в контейнере.
 """
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from openai import RateLimitError
 from pydantic import BaseModel
 
 from .answer import answer_question
+from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
 from .llm import create_client
 
 logger = logging.getLogger(__name__)
+
+PACKAGE_DIR = Path(__file__).parent
 
 resources: dict = {}
 
@@ -36,6 +46,20 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="USprings RAG", lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory=PACKAGE_DIR / "static"), name="static")
+# Исходные PDF: html=False, чтобы отдавались только файлы, без листинга папок.
+app.mount(
+    "/manuals",
+    StaticFiles(directory=settings.manuals_dir),
+    name="manuals",
+)
+
+
+@app.get("/")
+def index() -> FileResponse:
+    """Экран вопрос-ответ."""
+    return FileResponse(PACKAGE_DIR / "templates" / "index.html")
 
 
 class AskRequest(BaseModel):
