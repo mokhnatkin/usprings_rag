@@ -1,6 +1,7 @@
 const form = document.getElementById("ask-form");
 const questionInput = document.getElementById("question");
 const submitButton = document.getElementById("submit");
+const resetButton = document.getElementById("reset");
 const statusBlock = document.getElementById("status");
 const resultBlock = document.getElementById("result");
 const answerBlock = document.getElementById("answer");
@@ -39,10 +40,20 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+// «Новый вопрос»: очистить поле и прошлый ответ, вернуть фокус в поле ввода.
+resetButton.addEventListener("click", () => {
+  questionInput.value = "";
+  resultBlock.classList.add("hidden");
+  statusBlock.classList.add("hidden");
+  resetButton.classList.add("hidden");
+  questionInput.focus();
+});
+
 function render(data) {
   statusBlock.classList.add("hidden");
   resultBlock.classList.remove("hidden");
   resultBlock.classList.toggle("refused", data.refused);
+  resetButton.classList.remove("hidden");
   answerBlock.textContent = data.answer;
 
   sourcesList.replaceChildren();

@@ -42,8 +42,13 @@ textarea {
 
 textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
 
-button {
+.actions {
+  display: flex;
+  gap: 0.6rem;
   margin-top: 0.75rem;
+}
+
+button {
   padding: 0.6rem 1.4rem;
   font: inherit;
   font-weight: 600;
@@ -55,6 +60,15 @@ button {
 }
 
 button:disabled { background: var(--muted); cursor: default; }
+
+/* «Новый вопрос» - вторичное действие, не конкурирует с «Спросить». */
+button.secondary {
+  color: var(--accent);
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+button.secondary:hover { border-color: var(--accent); }
 
 #status {
   margin-top: 1.25rem;

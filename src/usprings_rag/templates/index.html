@@ -16,7 +16,10 @@
 
     <form id="ask-form">
       <textarea id="question" rows="3" placeholder="Например: как запланировать отгрузку, если на складе нет остатков?" required></textarea>
-      <button type="submit" id="submit">Спросить</button>
+      <div class="actions">
+        <button type="submit" id="submit">Спросить</button>
+        <button type="button" id="reset" class="secondary hidden">Новый вопрос</button>
+      </div>
     </form>
 
     <section id="status" class="hidden"></section>
