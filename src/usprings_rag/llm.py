@@ -6,6 +6,7 @@
 """
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from openai import OpenAI
@@ -94,3 +95,36 @@ def generate(
         response.completion_tokens,
     )
     return response
+
+
+def stream_generate(
+    client: OpenAI, question: str, hits: list[SearchHit], model: str | None = None
+) -> Iterator[str]:
+    """Сгенерировать ответ по частям (для показа текста по мере генерации).
+
+    `include_usage` заставляет OpenRouter прислать последним чанком расход токенов -
+    у него пустой `choices`, поэтому проверяем наличие дельты перед выдачей.
+    """
+    model = model or settings.openrouter_model
+    stream = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": build_user_prompt(question, hits)},
+        ],
+        temperature=settings.llm_temperature,
+        max_tokens=settings.llm_max_tokens,
+        stream=True,
+        stream_options={"include_usage": True},
+    )
+
+    for chunk in stream:
+        if chunk.usage:
+            logger.info(
+                "llm model=%s prompt_tokens=%d completion_tokens=%d (stream)",
+                chunk.model,
+                chunk.usage.prompt_tokens,
+                chunk.usage.completion_tokens,
+            )
+        if chunk.choices and chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content

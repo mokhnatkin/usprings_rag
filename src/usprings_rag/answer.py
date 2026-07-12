@@ -11,13 +11,14 @@
 
 import logging
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from openai import OpenAI
 from sqlalchemy.orm import Session
 
 from .embeddings import EmbeddingProvider
-from .llm import NO_ANSWER_MARKER, generate
+from .llm import NO_ANSWER_MARKER, generate, stream_generate
 from .retrieval import search
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,94 @@ def _collect_sources(hits) -> list[Source]:
         elif hit.pages_ref and hit.pages_ref not in existing.pages:
             existing.pages = f"{existing.pages}, {hit.pages_ref}"
     return list(sources.values())
+
+
+def _refusal(best_similarity: float, elapsed: float) -> Answer:
+    """Вежливый отказ без источников - они бы ничего не подтверждали."""
+    return Answer(
+        text=REFUSAL_TEXT,
+        refused=True,
+        sources=[],
+        best_similarity=best_similarity,
+        elapsed_seconds=elapsed,
+    )
+
+
+def stream_answer(
+    session: Session,
+    provider: EmbeddingProvider,
+    client: OpenAI,
+    question: str,
+    model: str | None = None,
+) -> Iterator[tuple[str, str | Answer]]:
+    """Тот же сценарий, но текст ответа отдаётся по мере генерации.
+
+    Выдаёт пары ("delta", кусок текста) и в конце ("done", Answer) с источниками
+    и диагностикой. Отказ по порогу мгновенный - сразу ("done", Answer).
+
+    Начало потока придерживаем: модель может ответить маркером НЕТ_ОТВЕТА (ответа
+    во фрагментах нет), и он не должен мелькнуть на экране. Копим текст, пока он
+    остаётся возможным началом маркера; как только расходится - отдаём накопленное
+    и дальше стримим без задержки.
+    """
+    started = time.perf_counter()
+    result = search(session, provider, question)
+
+    if not result.passed:
+        elapsed = time.perf_counter() - started
+        logger.info(
+            "answer verdict=refused best_similarity=%.4f elapsed=%.2fs",
+            result.best_similarity,
+            elapsed,
+        )
+        yield "done", _refusal(result.best_similarity, elapsed)
+        return
+
+    hits = result.relevant
+    buffer = ""
+    holding = True
+
+    for delta in stream_generate(client, question, hits, model=model):
+        if not holding:
+            yield "delta", delta
+            continue
+
+        buffer += delta
+        stripped = buffer.strip()
+        if stripped.startswith(NO_ANSWER_MARKER):
+            elapsed = time.perf_counter() - started
+            logger.info(
+                "answer verdict=no_answer_in_context best_similarity=%.4f elapsed=%.2fs",
+                result.best_similarity,
+                elapsed,
+            )
+            yield "done", _refusal(result.best_similarity, elapsed)
+            return
+        if NO_ANSWER_MARKER.startswith(stripped):
+            continue  # пока неотличимо от начала маркера - придерживаем
+        holding = False
+        yield "delta", buffer
+
+    if holding and buffer:  # ответ короче маркера и на него не похож
+        yield "delta", buffer
+
+    elapsed = time.perf_counter() - started
+    logger.info(
+        "answer verdict=answered chunks=%d best_similarity=%.4f elapsed=%.2fs (stream)",
+        len(hits),
+        result.best_similarity,
+        elapsed,
+    )
+    yield (
+        "done",
+        Answer(
+            text="",  # текст уже ушёл дельтами
+            refused=False,
+            sources=_collect_sources(hits),
+            best_similarity=result.best_similarity,
+            elapsed_seconds=elapsed,
+        ),
+    )
 
 
 def answer_question(

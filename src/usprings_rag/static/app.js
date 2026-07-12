@@ -9,38 +9,39 @@ const sourcesBlock = document.getElementById("sources-block");
 const sourcesList = document.getElementById("sources");
 const metaBlock = document.getElementById("meta");
 
-form.addEventListener("submit", async (event) => {
+let stream = null;
+
+form.addEventListener("submit", (event) => {
   event.preventDefault();
   const question = questionInput.value.trim();
   if (!question) return;
 
   submitButton.disabled = true;
+  resetButton.classList.add("hidden");
   resultBlock.classList.add("hidden");
+  resultBlock.classList.remove("refused");
+  answerBlock.textContent = "";
+  sourcesBlock.classList.add("hidden");
+  sourcesList.replaceChildren();
+  metaBlock.textContent = "";
   statusBlock.classList.remove("hidden", "error");
   statusBlock.textContent = "Думаю...";
 
-  try {
-    const response = await fetch("/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }),
-    });
+  stream = new EventSource(`/ask/stream?question=${encodeURIComponent(question)}`);
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || "Ошибка сервера. Попробуйте ещё раз.");
-    }
+  stream.addEventListener("message", (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === "delta") appendDelta(data.text);
+    else if (data.type === "done") finish(data);
+    else if (data.type === "error") fail(data.message);
+  });
 
-    render(await response.json());
-  } catch (error) {
-    statusBlock.classList.add("error");
-    statusBlock.textContent = error.message;
-  } finally {
-    submitButton.disabled = false;
-  }
+  // Сеть/сервер отвалились до события done - иначе индикатор «Думаю...» завис бы.
+  stream.addEventListener("error", () => {
+    if (stream) fail("Не удалось получить ответ. Попробуйте ещё раз.");
+  });
 });
 
-// «Новый вопрос»: очистить поле и прошлый ответ, вернуть фокус в поле ввода.
 resetButton.addEventListener("click", () => {
   questionInput.value = "";
   resultBlock.classList.add("hidden");
@@ -49,14 +50,24 @@ resetButton.addEventListener("click", () => {
   questionInput.focus();
 });
 
-function render(data) {
+function appendDelta(text) {
+  // Первая дельта: убираем «Думаю...» и показываем область ответа.
+  statusBlock.classList.add("hidden");
+  resultBlock.classList.remove("hidden");
+  answerBlock.textContent += text;
+}
+
+function finish(data) {
+  closeStream();
   statusBlock.classList.add("hidden");
   resultBlock.classList.remove("hidden");
   resultBlock.classList.toggle("refused", data.refused);
   resetButton.classList.remove("hidden");
-  answerBlock.textContent = data.answer;
+  submitButton.disabled = false;
 
-  sourcesList.replaceChildren();
+  // Отказ приходит целиком в done (LLM не вызывалась либо ответа в контексте нет).
+  if (data.answer) answerBlock.textContent = data.answer;
+
   sourcesBlock.classList.toggle("hidden", data.sources.length === 0);
   for (const source of data.sources) {
     const link = document.createElement("a");
@@ -74,4 +85,20 @@ function render(data) {
 
   metaBlock.textContent =
     `сходство: ${data.best_similarity} | время: ${data.elapsed_seconds} с`;
+}
+
+function fail(message) {
+  closeStream();
+  resultBlock.classList.add("hidden");
+  statusBlock.classList.remove("hidden");
+  statusBlock.classList.add("error");
+  statusBlock.textContent = message;
+  submitButton.disabled = false;
+}
+
+function closeStream() {
+  if (stream) {
+    stream.close();
+    stream = null;
+  }
 }

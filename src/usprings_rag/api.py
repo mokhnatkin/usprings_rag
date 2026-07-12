@@ -9,17 +9,19 @@
 одинаково работает на хосте и в контейнере.
 """
 
+import json
 import logging
+from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from openai import RateLimitError
 from pydantic import BaseModel
 
-from .answer import answer_question
+from .answer import answer_question, stream_answer
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
@@ -108,4 +110,58 @@ def ask(request: AskRequest) -> AskResponse:
         sources=[SourceOut(**vars(source)) for source in result.sources],
         best_similarity=round(result.best_similarity, 4),
         elapsed_seconds=round(result.elapsed_seconds, 2),
+    )
+
+
+def _sse(event: dict) -> str:
+    """Один кадр SSE. ensure_ascii=False - в тексте кириллица."""
+    return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+
+@app.get("/ask/stream")
+def ask_stream(question: str) -> StreamingResponse:
+    """То же, что /ask, но ответ идёт по мере генерации (SSE).
+
+    Генерация LLM доминирует в задержке, поэтому первые слова появляются через
+    секунду-две вместо ожидания всего ответа. Отказ по порогу остаётся мгновенным:
+    приходит сразу событием `done`, LLM не вызывается.
+
+    GET (а не POST) - чтобы на клиенте работал штатный EventSource.
+    """
+
+    def events() -> Iterator[str]:
+        with SessionLocal() as session:
+            try:
+                for kind, payload in stream_answer(
+                    session, resources["provider"], resources["client"], question
+                ):
+                    if kind == "delta":
+                        yield _sse({"type": "delta", "text": payload})
+                    else:
+                        yield _sse(
+                            {
+                                "type": "done",
+                                "answer": payload.text,
+                                "refused": payload.refused,
+                                "sources": [vars(s) for s in payload.sources],
+                                "best_similarity": round(payload.best_similarity, 4),
+                                "elapsed_seconds": round(payload.elapsed_seconds, 2),
+                            }
+                        )
+            except RateLimitError:
+                logger.warning("LLM rate limit (429) - бесплатный тир OpenRouter занят")
+                yield _sse(
+                    {
+                        "type": "error",
+                        "message": (
+                            "Модель временно недоступна (лимит бесплатного тира). "
+                            "Повторите вопрос через минуту."
+                        ),
+                    }
+                )
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
