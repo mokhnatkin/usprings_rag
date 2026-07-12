@@ -30,12 +30,12 @@
 
 ## Статус
 
-Идёт разработка MVP. Готовы этапы 1-4: окружение (Docker Compose + Postgres/pgvector),
+Идёт разработка MVP. Готовы этапы 1-5: окружение (Docker Compose + Postgres/pgvector),
 схема БД с миграциями (SQLAlchemy + Alembic), ingest-пайплайн (парсинг PDF, чанкинг,
-эмбеддинги BGE-m3, запись в БД, `uv run ingest`). Этап 5 в работе: семантический поиск
-готов (`uv run search "вопрос"` - top-k чанков со сходством и вердиктом порога),
-впереди калибровка `SIMILARITY_THRESHOLD` на eval-наборе. Далее: генерация ответа,
-портал, упаковка. Журнал -
+эмбеддинги BGE-m3, запись в БД, `uv run ingest`), семантический поиск с порогом
+(`uv run search "вопрос"`). Порог откалиброван на eval-наборе
+(`eval/questions.yaml` + `eval/run_eval.py`): recall@1 = 17/17,
+`SIMILARITY_THRESHOLD=0.53`. Далее: генерация ответа, портал, упаковка. Журнал -
 в [`docs/MVP/MVP0/mvp-dev-plan-progress.md`](docs/MVP/MVP0/mvp-dev-plan-progress.md).
 
 ## Документация
