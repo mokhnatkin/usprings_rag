@@ -1,4 +1,24 @@
 services:
+  app:
+    build: .
+    env_file: .env
+    environment:
+      # Внутри compose-сети БД доступна как db:5432 - хостовый DATABASE_URL
+      # (localhost и проброшенный порт) в контейнере не работает.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Веса BGE-m3 (2,3 ГБ) уже в HF-кэше хоста - без монтирования первый старт
+      # уйдёт в многочасовую перекачку.
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      # Инструкции: ingest читает отсюда, портал раздаёт PDF по /manuals.
+      # Относительные source_path в БД совпадают на хосте и в контейнере.
+      - ./docs/manuals:/app/docs/manuals
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     image: pgvector/pgvector:pg16
     environment:

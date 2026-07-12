@@ -30,31 +30,52 @@
 
 ## Статус
 
-Идёт разработка MVP. Готовы этапы 1-7: окружение (Docker Compose + Postgres/pgvector),
-схема БД с миграциями (SQLAlchemy + Alembic), ingest-пайплайн (парсинг PDF, чанкинг,
-эмбеддинги BGE-m3, запись в БД), семантический поиск с откалиброванным порогом
-(recall@1 = 17/17, `SIMILARITY_THRESHOLD=0.53`), генерация ответа через OpenRouter
-(модель выбрана по A/B: `qwen/qwen3-next-80b-a3b-instruct`) и веб-портал со стримингом
-ответа и раздачей исходных PDF.
-
-Осталось: этап 8 (упаковка в Docker). Журнал -
+MVP собран (этапы 1-8): окружение, схема БД с миграциями (SQLAlchemy + Alembic),
+ingest-пайплайн (парсинг PDF, чанкинг, эмбеддинги BGE-m3, запись в БД), семантический
+поиск с откалиброванным порогом (recall@1 = 17/17, `SIMILARITY_THRESHOLD=0.53`),
+генерация ответа через OpenRouter (модель выбрана по A/B:
+`qwen/qwen3-next-80b-a3b-instruct`), веб-портал со стримингом ответа и раздачей
+исходных PDF, упаковка в Docker Compose. Журнал -
 в [`docs/MVP/MVP0/mvp-dev-plan-progress.md`](docs/MVP/MVP0/mvp-dev-plan-progress.md).
 
-## Локальный запуск (до упаковки в Docker)
+## Запуск (Docker Compose)
 
-Требуется: `uv`, Docker Desktop (для БД), заполненный `.env` (скопировать с
-`.env.example`, вписать `OPENROUTER_API_KEY`).
+Требуется: Docker Desktop, заполненный `.env` (скопировать с `.env.example`, вписать
+`OPENROUTER_API_KEY` - ключ получить на <https://openrouter.ai/keys>).
 
 ```bash
-docker compose up -d db                          # БД (Postgres + pgvector)
+docker compose up -d                 # БД + приложение (миграции применяются на старте)
+docker compose run --rm app ingest   # наполнить базу из docs/manuals/IT_1C (идемпотентно)
+```
+
+Портал открывается на <http://localhost:8000>: вопрос -> ответ со ссылками на исходные
+инструкции (текст печатается по мере генерации) либо вежливый отказ, если релевантной
+инструкции нет.
+
+Нюансы:
+
+- **Веса BGE-m3 (2,3 ГБ)**: в контейнер монтируется HF-кэш хоста
+  (`~/.cache/huggingface`). Если модель на хосте ещё не скачана, первый старт уйдёт
+  в загрузку с Hugging Face (на медленном канале - часы), дальше кэш переживает
+  пересборки образа.
+- **Старт приложения** занимает десятки секунд (загрузка весов, прогрев в lifespan) -
+  готовность видна в `docker compose logs app` по строке `Uvicorn running`.
+- **Калибруемые параметры** (`SIMILARITY_THRESHOLD`, `TOP_K`, `CHUNK_*`,
+  `OPENROUTER_MODEL`, ...) - в `.env`, описание - в `.env.example`; когда и что
+  перекалибровывать - `docs/maintenance.md`.
+- Порт БД наружу пробрасывается как `${POSTGRES_PORT}` (нужен только для локальной
+  разработки; внутри compose-сети приложение ходит на `db:5432`).
+
+## Локальный запуск без Docker (разработка)
+
+Требуется: `uv`, Docker Desktop (для БД), заполненный `.env`.
+
+```bash
+docker compose up -d db                          # только БД (Postgres + pgvector)
 uv run --no-sync alembic upgrade head            # миграции схемы
 uv run --no-sync ingest                          # наполнить базу из docs/manuals/IT_1C
 uv run --no-sync uvicorn usprings_rag.api:app    # портал -> http://127.0.0.1:8000
 ```
-
-Портал открывается на <http://127.0.0.1:8000>: вопрос -> ответ со ссылками на исходные
-инструкции (текст печатается по мере генерации) либо вежливый отказ, если релевантной
-инструкции нет.
 
 Полезное:
 

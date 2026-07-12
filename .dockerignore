@@ -1,0 +1,12 @@
+# В образ входят только pyproject, src и alembic (см. Dockerfile).
+# Всё остальное режем, чтобы контекст сборки был маленьким и не тащил секреты.
+.git
+.venv
+.env
+docs
+eval
+tests
+__pycache__
+*.pyc
+.pytest_cache
+uv.lock
