@@ -18,6 +18,7 @@ dependencies = [
 
 [project.scripts]
 ingest = "usprings_rag.ingest.cli:main"
+search = "usprings_rag.search_cli:main"
 
 [build-system]
 requires = ["hatchling"]
