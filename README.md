@@ -32,16 +32,51 @@
 
 Идёт разработка MVP. Готовы этапы 1-7: окружение (Docker Compose + Postgres/pgvector),
 схема БД с миграциями (SQLAlchemy + Alembic), ingest-пайплайн (парсинг PDF, чанкинг,
-эмбеддинги BGE-m3, запись в БД, `uv run ingest`), семантический поиск с откалиброванным
-порогом (recall@1 = 17/17, `SIMILARITY_THRESHOLD=0.53`), генерация ответа через
-OpenRouter и веб-портал с раздачей исходных PDF.
+эмбеддинги BGE-m3, запись в БД), семантический поиск с откалиброванным порогом
+(recall@1 = 17/17, `SIMILARITY_THRESHOLD=0.53`), генерация ответа через OpenRouter
+(модель выбрана по A/B: `qwen/qwen3-next-80b-a3b-instruct`) и веб-портал со стримингом
+ответа и раздачей исходных PDF.
 
-Запуск портала: `uv run --no-sync uvicorn usprings_rag.api:app` -> http://127.0.0.1:8000
-(вопрос -> ответ со ссылками на исходные инструкции либо вежливый отказ).
-
-Осталось: этап 8 (упаковка в Docker) и незакрытый подшаг 6.4 (A/B-сравнение LLM -
-блокировали лимиты бесплатного тира OpenRouter). Журнал -
+Осталось: этап 8 (упаковка в Docker). Журнал -
 в [`docs/MVP/MVP0/mvp-dev-plan-progress.md`](docs/MVP/MVP0/mvp-dev-plan-progress.md).
+
+## Локальный запуск (до упаковки в Docker)
+
+Требуется: `uv`, Docker Desktop (для БД), заполненный `.env` (скопировать с
+`.env.example`, вписать `OPENROUTER_API_KEY`).
+
+```bash
+docker compose up -d db                          # БД (Postgres + pgvector)
+uv run --no-sync alembic upgrade head            # миграции схемы
+uv run --no-sync ingest                          # наполнить базу из docs/manuals/IT_1C
+uv run --no-sync uvicorn usprings_rag.api:app    # портал -> http://127.0.0.1:8000
+```
+
+Портал открывается на <http://127.0.0.1:8000>: вопрос -> ответ со ссылками на исходные
+инструкции (текст печатается по мере генерации) либо вежливый отказ, если релевантной
+инструкции нет.
+
+Полезное:
+
+```bash
+uv run --no-sync search "вопрос"                 # проверить выдачу поиска без LLM
+uv run --no-sync python eval/run_eval.py         # recall@k и распределения сходств
+uv run --no-sync python eval/run_answers.py      # прогон вопросов через полный сценарий
+uv run --no-sync pytest -q                       # тесты
+```
+
+Особенности запуска (проверено на Windows):
+
+- **Всегда `--no-sync`.** Без него `uv run` делает авто-sync и уходит перекачивать torch
+  (несколько ГБ).
+- **Русский вывод CLI** - с `PYTHONUTF8=1` (иначе `UnicodeEncodeError` при
+  перенаправлении вывода в файл).
+- **Первый старт портала - десятки секунд**: грузятся веса BGE-m3 (2,3 ГБ, прогрев в
+  lifespan-хуке). Дальше запросы идут быстро.
+- Если команда падает с «файл занят» или пропала точка входа (`ingest`/`search`) -
+  проверить незавершившиеся процессы:
+  `Get-Process | Where-Object { $_.Path -like "*usprings_rag*" } | Stop-Process -Force`,
+  затем `uv pip install -e . --no-deps` (перегенерирует консольные скрипты).
 
 ## Документация
 
