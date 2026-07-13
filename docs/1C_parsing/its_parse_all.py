@@ -62,10 +62,16 @@ def login(s: requests.Session) -> None:
     user, password = read_credentials()
     s.get(BASE + "/db/erp25ltsdoc", headers=UA, timeout=60)
     r = s.get(CAS_URL, headers=UA, timeout=60)
-    soup = BeautifulSoup(r.text, "html.parser")
-    execution = soup.find("form", id="loginForm").find("input", {"name": "execution"})["value"]
+    form = BeautifulSoup(r.text, "html.parser").find("form", id="loginForm")
+    if form is None:
+        # CAS помнит сессию (TGT) и сразу редиректит с тикетом - формы нет
+        if "ticket=" in r.url:
+            print(f"[{now()}] login ok (SSO)")
+            return
+        raise FetchError(f"no login form: {r.url}")
     r = s.post(r.url, headers=UA, timeout=60, data={
-        "username": user, "password": password, "execution": execution,
+        "username": user, "password": password,
+        "execution": form.find("input", {"name": "execution"})["value"],
         "_eventId": "submit", "rememberMe": "on",
     })
     if "ticket=" not in r.url:
@@ -81,6 +87,8 @@ def get_retry(s: requests.Session, url: str) -> requests.Response:
             r = s.get(url, headers=UA, timeout=60)
             if r.status_code == 200:
                 return r
+            if r.status_code == 401:  # нет авторизации - ретраи бесполезны
+                raise FetchError("HTTP 401")
             last = f"HTTP {r.status_code}"
         except requests.RequestException as e:
             last = type(e).__name__
@@ -121,24 +129,32 @@ def save_registry(header: list[str], rows: list[dict]) -> None:
     os.replace(tmp, REGISTRY)
 
 
-def fetch_document(s: requests.Session, row: dict) -> tuple[str, Path]:
-    """Скачивает документ раздела с картинками. Возвращает (stem, папка work)."""
+def resolve_src(s: requests.Session, row: dict) -> tuple[str, str]:
+    """По странице раздела определяет адрес тела документа. Возвращает (src, stem).
+
+    Отдельный шаг: по stem видно, скачан ли уже этот документ (глава = несколько
+    подразделов-якорей), и дубль отсеивается до скачивания тела и картинок.
+    """
     r = get_retry(s, BASE + row["url"])
-    if "paywall" in r.text:  # сессия протухла - перелогин и одна повторная попытка
-        login(s)
-        r = get_retry(s, BASE + row["url"])
-        if "paywall" in r.text:
-            raise FetchError("paywall after relogin")
     m = re.search(r'id="w_metadata_doc_frame"[^>]*src="([^"#]*)', r.text)
     if not m:
         raise FetchError("no doc frame")
     src = m.group(1)
-    stem = sanitize(Path(unquote(src)).stem)
+    return src, sanitize(Path(unquote(src)).stem)
 
+
+def fetch_document(s: requests.Session, src: str, stem: str) -> Path:
+    """Скачивает тело документа с картинками. Возвращает папку work."""
     doc_dir = WORK / stem
     (doc_dir / "img").mkdir(parents=True, exist_ok=True)
     time.sleep(PAUSE)
-    r = get_retry(s, BASE + requests.utils.quote(src))
+    try:
+        r = get_retry(s, BASE + requests.utils.quote(src))
+    except FetchError as e:  # 401 = сессия протухла: перелогин и одна попытка
+        if str(e) != "HTTP 401":
+            raise
+        login(s)
+        r = get_retry(s, BASE + requests.utils.quote(src))
 
     soup = BeautifulSoup(r.text, "html.parser")
     for tag in soup(["script", "style", "link"]):
@@ -165,7 +181,7 @@ def fetch_document(s: requests.Session, row: dict) -> tuple[str, Path]:
     title = soup.title.get_text(strip=True) if soup.title else stem
     (doc_dir / "instruction.html").write_text(str(soup), encoding="utf-8")
     (doc_dir / "title.txt").write_text(title, encoding="utf-8")
-    return stem, doc_dir
+    return doc_dir
 
 
 def build_pdf(doc_dir: Path, stem: str) -> Path:
@@ -188,7 +204,9 @@ def build_pdf(doc_dir: Path, stem: str) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Пакетный парсинг ИТС по registry.md")
     parser.add_argument("--limit", type=int, default=0,
-                        help="обработать не более N разделов (0 - все)")
+                        help="обработать не более N разделов, включая дубли (0 - все)")
+    parser.add_argument("--new", type=int, default=0,
+                        help="остановиться после N новых PDF (дубли не считаются; 0 - все)")
     args = parser.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -205,17 +223,19 @@ def main() -> None:
             continue
         if args.limit and done + errors + dups >= args.limit:
             break
+        if args.new and done >= args.new:
+            break
         label = f"[{row['n']}/{len(rows)}]"
         try:
             row["dl"], row["dl_start"] = "", now()
-            stem, doc_dir = fetch_document(s, row)
-            pdf = OUT_DIR / f"{stem}.pdf"
-            if pdf.exists():
+            src, stem = resolve_src(s, row)
+            if (OUT_DIR / f"{stem}.pdf").exists():  # документ уже собран - не качаем
                 row["dl"] = row["pdf"] = "дубль"
                 row["dl_start"] = ""
                 dups += 1
                 print(f"{label} дубль: {stem}")
             else:
+                doc_dir = fetch_document(s, src, stem)
                 row["dl"], row["dl_end"] = "ok", now()
                 row["pdf_start"] = now()
                 build_pdf(doc_dir, stem)

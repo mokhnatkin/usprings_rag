@@ -10,111 +10,111 @@
 | 2 | Введение | /db/erp25ltsdoc/bookmark/Introduction/Introduction | ok | 2026-07-13 11:59:51 | 2026-07-13 12:00:00 | ok | 2026-07-13 12:00:00 | 2026-07-13 12:00:01 |
 | 3 | О программе | /db/erp25ltsdoc/bookmark/Introduction/About | дубль |  |  | дубль |  |  |
 | 4 | Технологии управления проектами | /db/erp25ltsdoc/bookmark/Introduction/ProjectManagement | дубль |  |  | дубль |  |  |
-| 5 | Описание изменений в новых версиях | /db/erp25ltsdoc/bookmark/Introduction/WhatsNew |  |  |  |  |  |  |
-| 6 | Ознакомительные версии и планы разработки | /db/erp25ltsdoc/bookmark/Introduction/WhatsNewPlan |  |  |  |  |  |  |
-| 7 | Демобаза | /db/erp25ltsdoc/bookmark/Introduction/DemoBase |  |  |  |  |  |  |
-| 8 | Первоначальная настройка новой базы | /db/erp25ltsdoc/bookmark/Introduction/IntroductionInitialSetup |  |  |  |  |  |  |
-| 9 | Первый запуск | /db/erp25ltsdoc/bookmark/Introduction/FirstStart |  |  |  |  |  |  |
-| 10 | Начальная страница | /db/erp25ltsdoc/bookmark/Introduction/InitialPage |  |  |  |  |  |  |
-| 11 | Заголовок программы и цветовые схемы оформления | /db/erp25ltsdoc/bookmark/Introduction/HeaderStyle |  |  |  |  |  |  |
-| 12 | Первоначальная настройка | /db/erp25ltsdoc/bookmark/Introduction/Setup |  |  |  |  |  |  |
-| 13 | Управленческий и регламентированный учеты | /db/erp25ltsdoc/bookmark/Introduction/SetupAccounting |  |  |  |  |  |  |
-| 14 | Настройки учета номенклатуры | /db/erp25ltsdoc/bookmark/Introduction/InventSetup |  |  |  |  |  |  |
-| 15 | Настройки детализации и возможностей учета | /db/erp25ltsdoc/bookmark/Introduction/AccountingFeaturesSetup |  |  |  |  |  |  |
-| 16 | Настройка пользователей | /db/erp25ltsdoc/bookmark/Introduction/UserSetup |  |  |  |  |  |  |
-| 17 | Обслуживание, обновление и патчи ошибок | /db/erp25ltsdoc/bookmark/Introduction/UpdateSetup |  |  |  |  |  |  |
-| 18 | Использование функциональности предыдущих версий | /db/erp25ltsdoc/bookmark/Introduction/OldFunctions |  |  |  |  |  |  |
-| 19 | Настройка интеграции с другими системами | /db/erp25ltsdoc/bookmark/Introduction/IntegrationSetup |  |  |  |  |  |  |
-| 20 | 1. Нормативно-справочная информация | /db/erp25ltsdoc/bookmark/Catalogies/Catalogies |  |  |  |  |  |  |
-| 21 | 1.1. Предприятие | /db/erp25ltsdoc/bookmark/Company/Company |  |  |  |  |  |  |
-| 22 | Валюты учета | /db/erp25ltsdoc/bookmark/Company/CurrencySettings |  |  |  |  |  |  |
-| 23 | Организации | /db/erp25ltsdoc/bookmark/Company/Organizations |  |  |  |  |  |  |
-| 24 | Основные сведения об организации | /db/erp25ltsdoc/bookmark/Company/Organization1 |  |  |  |  |  |  |
-| 25 | Контактная информация организации | /db/erp25ltsdoc/bookmark/Company/Organization2 |  |  |  |  |  |  |
-| 26 | Заполнение реквизитов организации по ИНН | /db/erp25ltsdoc/bookmark/Company/Organization3 |  |  |  |  |  |  |
-| 27 | Настройки учетной политики | /db/erp25ltsdoc/bookmark/Company/Organization4 |  |  |  |  |  |  |
-| 28 | Статус организации | /db/erp25ltsdoc/bookmark/Company/Organization5 |  |  |  |  |  |  |
-| 29 | Лица с правом подписи | /db/erp25ltsdoc/bookmark/Company/Organization6 |  |  |  |  |  |  |
-| 30 | Настройки НСИ для организации | /db/erp25ltsdoc/bookmark/Company/Organization7 |  |  |  |  |  |  |
-| 31 | Печать реквизитов организации | /db/erp25ltsdoc/bookmark/Company/Organization8 |  |  |  |  |  |  |
-| 32 | Управленческая организация | /db/erp25ltsdoc/bookmark/Company/Organization9 |  |  |  |  |  |  |
-| 33 | Выгрузка данных организации контрагенту | /db/erp25ltsdoc/bookmark/Company/Organization10 |  |  |  |  |  |  |
-| 34 | Физические лица | /db/erp25ltsdoc/bookmark/Company/Individuals |  |  |  |  |  |  |
-| 35 | Структура предприятия | /db/erp25ltsdoc/bookmark/Company/CompanyUnits |  |  |  |  |  |  |
-| 36 | Обособленные подразделения организации | /db/erp25ltsdoc/bookmark/Company/CompanyBranches |  |  |  |  |  |  |
-| 37 | Обособленные подразделения на отдельном балансе | /db/erp25ltsdoc/bookmark/Company/CompanyBranches1 |  |  |  |  |  |  |
-| 38 | Обособленные подразделения, не выделенные на отдельный баланс | /db/erp25ltsdoc/bookmark/Company/CompanyBranches2 |  |  |  |  |  |  |
-| 39 | Производственные календари | /db/erp25ltsdoc/bookmark/Company/Calendar |  |  |  |  |  |  |
-| 40 | 1.2. Номенклатура (товары, услуги, работы, тара) | /db/erp25ltsdoc/bookmark/Goods/Goods |  |  |  |  |  |  |
-| 41 | Характеристика номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsCharacter |  |  |  |  |  |  |
-| 42 | Виды номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsTypes |  |  |  |  |  |  |
-| 43 | Тип номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsType |  |  |  |  |  |  |
-| 44 | Настройка использования характеристик | /db/erp25ltsdoc/bookmark/Goods/CharacterSettings |  |  |  |  |  |  |
-| 45 | Настройки серий товаров | /db/erp25ltsdoc/bookmark/Goods/BatchesSettings |  |  |  |  |  |  |
-| 46 | Дополнительные реквизиты | /db/erp25ltsdoc/bookmark/Goods/AdditionalDetails |  |  |  |  |  |  |
-| 47 | Шаблоны наименований | /db/erp25ltsdoc/bookmark/Goods/NamePattern |  |  |  |  |  |  |
-| 48 | Видимость, контроль заполнения и уникальности реквизитов | /db/erp25ltsdoc/bookmark/Goods/FillingControl |  |  |  |  |  |  |
-| 49 | Настройка значений по умолчанию | /db/erp25ltsdoc/bookmark/Goods/DefaultFilling |  |  |  |  |  |  |
-| 50 | Дополнительные сведения | /db/erp25ltsdoc/bookmark/Goods/AdditionalInformation |  |  |  |  |  |  |
-| 51 | Подходы к организации списка «Номенклатура» | /db/erp25ltsdoc/bookmark/Goods/GoodListView |  |  |  |  |  |  |
-| 52 | Настройки быстрого отбора в списках номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodListFilters |  |  |  |  |  |  |
-| 53 | Настройки поиска в списках номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodListSEarch |  |  |  |  |  |  |
-| 54 | Группы номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsGroups |  |  |  |  |  |  |
-| 55 | Единицы измерения, наборы упаковок | /db/erp25ltsdoc/bookmark/Goods/UnitsAndPacks |  |  |  |  |  |  |
-| 56 | Указание количества в различных единицах измерения и допустимое отклонение при пересчете | /db/erp25ltsdoc/bookmark/Goods/CrossUnits |  |  |  |  |  |  |
-| 57 | Допустимое отклонение при отгрузке и приемке мерных товаров | /db/erp25ltsdoc/bookmark/Goods/UnitsDeviations |  |  |  |  |  |  |
-| 58 | Упаковки товарных мест | /db/erp25ltsdoc/bookmark/Goods/ItemsPacks |  |  |  |  |  |  |
-| 59 | Складская группа номенклатуры | /db/erp25ltsdoc/bookmark/Goods/WharehouseGroups |  |  |  |  |  |  |
-| 60 | Группы доступа номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsAccessGroups |  |  |  |  |  |  |
-| 61 | Качество товаров | /db/erp25ltsdoc/bookmark/Goods/GoodsQuality |  |  |  |  |  |  |
-| 62 | Штрихкодирование товаров | /db/erp25ltsdoc/bookmark/Goods/Barcoding |  |  |  |  |  |  |
-| 63 | Сертификаты | /db/erp25ltsdoc/bookmark/Goods/GoodsCertificates |  |  |  |  |  |  |
-| 64 | Интеграция с сервисом Росаккредитации по сертификатам и декларациям о соответствии | /db/erp25ltsdoc/bookmark/Goods/CertificatesCheck |  |  |  |  |  |  |
-| 65 | Сведения о производителе | /db/erp25ltsdoc/bookmark/Goods/Manufacturer |  |  |  |  |  |  |
-| 66 | Настройки регламентированного и финансового учета номенклатуры | /db/erp25ltsdoc/bookmark/Goods/FinanceSeting |  |  |  |  |  |  |
-| 67 | Описание товара и дополнительные реквизиты | /db/erp25ltsdoc/bookmark/Goods/GoodsInformation |  |  |  |  |  |  |
-| 68 | Классификация номенклатуры для прочих учетных задач | /db/erp25ltsdoc/bookmark/Goods/GoodsOtherClassification |  |  |  |  |  |  |
-| 69 | Учет тары | /db/erp25ltsdoc/bookmark/Goods/Packaging |  |  |  |  |  |  |
-| 70 | Динамические наборы | /db/erp25ltsdoc/bookmark/Goods/DynamicGoodsSets |  |  |  |  |  |  |
-| 71 | Товары, продаваемые совместно | /db/erp25ltsdoc/bookmark/Goods/GoodsComplements |  |  |  |  |  |  |
-| 72 | Работа с сервисом 1С:Номенклатура | /db/erp25ltsdoc/bookmark/Goods/Service1CNomenklatura |  |  |  |  |  |  |
-| 73 | Загрузка номенклатуры из сторонних систем | /db/erp25ltsdoc/bookmark/Goods/GoodsImportFromExtPDM |  |  |  |  |  |  |
-| 74 | 1.3. Серии товаров | /db/erp25ltsdoc/bookmark/Batches/Batches |  |  |  |  |  |  |
-| 75 | Принцип регистрации серий товаров | /db/erp25ltsdoc/bookmark/Batches/BatchRegistrationPrinciples |  |  |  |  |  |  |
-| 76 | Политика учета серий | /db/erp25ltsdoc/bookmark/Batches/BatchPolitics |  |  |  |  |  |  |
-| 77 | Указание серий в документах | /db/erp25ltsdoc/bookmark/Batches/BatchesInDocuments |  |  |  |  |  |  |
-| 78 | Штрихкоды серий номенклатуры | /db/erp25ltsdoc/bookmark/Batches/BatchBarcode |  |  |  |  |  |  |
-| 79 | Справочное указание серий | /db/erp25ltsdoc/bookmark/Batches/ReferenceBatch |  |  |  |  |  |  |
-| 80 | Дополнительный разрез складского учета | /db/erp25ltsdoc/bookmark/Batches/BatchInvenory |  |  |  |  |  |  |
-| 81 | Учет себестоимости по сериям | /db/erp25ltsdoc/bookmark/Batches/BatchCost |  |  |  |  |  |  |
-| 82 | Указание серий на адресном складе | /db/erp25ltsdoc/bookmark/Batches/TargetedStockBatchinventory |  |  |  |  |  |  |
-| 83 | Учет серий при обособлении товаров | /db/erp25ltsdoc/bookmark/Batches/SeparativeBatchInventory |  |  |  |  |  |  |
-| 84 | Указание серий при подборе количества товаров | /db/erp25ltsdoc/bookmark/Batches/BatchSelection |  |  |  |  |  |  |
-| 85 | Серии в отчетах | /db/erp25ltsdoc/bookmark/Batches/BatchReports |  |  |  |  |  |  |
-| 86 | 1.4. Деловые партнеры | /db/erp25ltsdoc/bookmark/Partners/Partners |  |  |  |  |  |  |
-| 87 | Регистрация нового делового партнера | /db/erp25ltsdoc/bookmark/Partners/NewPartner |  |  |  |  |  |  |
-| 88 | Ввод сведений о контрагенте | /db/erp25ltsdoc/bookmark/Partners/Contragent |  |  |  |  |  |  |
-| 89 | Загрузка данных контрагента из файла | /db/erp25ltsdoc/bookmark/Partners/PartnerLoad |  |  |  |  |  |  |
-| 90 | Автоматическое заполнение реквизитов контрагентов | /db/erp25ltsdoc/bookmark/Partners/PartnersFilling |  |  |  |  |  |  |
-| 91 | Проверка контрагентов | /db/erp25ltsdoc/bookmark/Partners/PartnersChecking |  |  |  |  |  |  |
-| 92 | История изменений реквизитов контрагента | /db/erp25ltsdoc/bookmark/Partners/ContragentHistory |  |  |  |  |  |  |
-| 93 | Особенность работы с контрагентами- физическими лицами и индивидуальными предпринимателями | /db/erp25ltsdoc/bookmark/Partners/IPFL |  |  |  |  |  |  |
-| 94 | Контрагенты-нерезиденты | /db/erp25ltsdoc/bookmark/Partners/NonresidentCounterparties |  |  |  |  |  |  |
-| 95 | Обособленные подразделения контрагентов | /db/erp25ltsdoc/bookmark/Partners/PartnersBranches |  |  |  |  |  |  |
-| 96 | Ввод информации о компании, которая состоит из нескольких юридических лиц | /db/erp25ltsdoc/bookmark/Partners/Holding1 |  |  |  |  |  |  |
-| 97 | Ввод информации о сети магазинов (множество партнеров, одно юридическое лицо) | /db/erp25ltsdoc/bookmark/Partners/Holding2 |  |  |  |  |  |  |
-| 98 | Взаимодействие с партнерами с использованием сервиса «1С:Бизнес-сеть» | /db/erp25ltsdoc/bookmark/Partners/PartnersBusinessNetwork |  |  |  |  |  |  |
-| 99 | Получение сводной информации по партнеру | /db/erp25ltsdoc/bookmark/Partners/PartnerInfo |  |  |  |  |  |  |
-| 100 | 1.A. Описание отдельных учетных задач | /db/erp25ltsdoc/bookmark/CatalogiesApp/CatalogiesApp |  |  |  |  |  |  |
-| 101 | 1.A.1. Настройка политики учета серий для отдельных сценариев | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesSetup |  |  |  |  |  |  |
-| 102 | Использование серийных номеров в управлении рекламациями и организации постпродажного обслуживания | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesClaim |  |  |  |  |  |  |
-| 103 | Использование серий для учета и управления остатками товаров по срокам годности | /db/erp25ltsdoc/bookmark/SeriesSetup/Seriesexpiration |  |  |  |  |  |  |
-| 104 | Использование серий для учета остатков товаров по единицам хранения | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesResidue |  |  |  |  |  |  |
-| 105 | Серия как разрез финансового учета | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesAccnt |  |  |  |  |  |  |
-| 106 | Использование серий для учета алкогольной продукции | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesAlco |  |  |  |  |  |  |
-| 107 | Использование серий для подконтрольной продукции ВетИС | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesVetIS |  |  |  |  |  |  |
-| 108 | Использование серий для учет МРЦ табачной продукции | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesTabaco |  |  |  |  |  |  |
-| 109 | 1.A.2. Разработка структуры номенклатурного справочника | /db/erp25ltsdoc/bookmark/ProductCatalogDesign/ProductCatalogDesign |  |  |  |  |  |  |
+| 5 | Описание изменений в новых версиях | /db/erp25ltsdoc/bookmark/Introduction/WhatsNew | дубль |  |  | дубль |  |  |
+| 6 | Ознакомительные версии и планы разработки | /db/erp25ltsdoc/bookmark/Introduction/WhatsNewPlan | дубль |  |  | дубль |  |  |
+| 7 | Демобаза | /db/erp25ltsdoc/bookmark/Introduction/DemoBase | дубль |  |  | дубль |  |  |
+| 8 | Первоначальная настройка новой базы | /db/erp25ltsdoc/bookmark/Introduction/IntroductionInitialSetup | дубль |  |  | дубль |  |  |
+| 9 | Первый запуск | /db/erp25ltsdoc/bookmark/Introduction/FirstStart | дубль |  |  | дубль |  |  |
+| 10 | Начальная страница | /db/erp25ltsdoc/bookmark/Introduction/InitialPage | дубль |  |  | дубль |  |  |
+| 11 | Заголовок программы и цветовые схемы оформления | /db/erp25ltsdoc/bookmark/Introduction/HeaderStyle | дубль |  |  | дубль |  |  |
+| 12 | Первоначальная настройка | /db/erp25ltsdoc/bookmark/Introduction/Setup | дубль |  |  | дубль |  |  |
+| 13 | Управленческий и регламентированный учеты | /db/erp25ltsdoc/bookmark/Introduction/SetupAccounting | дубль |  |  | дубль |  |  |
+| 14 | Настройки учета номенклатуры | /db/erp25ltsdoc/bookmark/Introduction/InventSetup | дубль |  |  | дубль |  |  |
+| 15 | Настройки детализации и возможностей учета | /db/erp25ltsdoc/bookmark/Introduction/AccountingFeaturesSetup | дубль |  |  | дубль |  |  |
+| 16 | Настройка пользователей | /db/erp25ltsdoc/bookmark/Introduction/UserSetup | дубль |  |  | дубль |  |  |
+| 17 | Обслуживание, обновление и патчи ошибок | /db/erp25ltsdoc/bookmark/Introduction/UpdateSetup | дубль |  |  | дубль |  |  |
+| 18 | Использование функциональности предыдущих версий | /db/erp25ltsdoc/bookmark/Introduction/OldFunctions | дубль |  |  | дубль |  |  |
+| 19 | Настройка интеграции с другими системами | /db/erp25ltsdoc/bookmark/Introduction/IntegrationSetup | дубль |  |  | дубль |  |  |
+| 20 | 1. Нормативно-справочная информация | /db/erp25ltsdoc/bookmark/Catalogies/Catalogies | ok | 2026-07-13 13:04:37 | 2026-07-13 13:04:42 | ok | 2026-07-13 13:04:42 | 2026-07-13 13:04:42 |
+| 21 | 1.1. Предприятие | /db/erp25ltsdoc/bookmark/Company/Company | ok | 2026-07-13 13:04:43 | 2026-07-13 13:05:16 | ok | 2026-07-13 13:05:16 | 2026-07-13 13:05:17 |
+| 22 | Валюты учета | /db/erp25ltsdoc/bookmark/Company/CurrencySettings | дубль |  |  | дубль |  |  |
+| 23 | Организации | /db/erp25ltsdoc/bookmark/Company/Organizations | дубль |  |  | дубль |  |  |
+| 24 | Основные сведения об организации | /db/erp25ltsdoc/bookmark/Company/Organization1 | дубль |  |  | дубль |  |  |
+| 25 | Контактная информация организации | /db/erp25ltsdoc/bookmark/Company/Organization2 | дубль |  |  | дубль |  |  |
+| 26 | Заполнение реквизитов организации по ИНН | /db/erp25ltsdoc/bookmark/Company/Organization3 | дубль |  |  | дубль |  |  |
+| 27 | Настройки учетной политики | /db/erp25ltsdoc/bookmark/Company/Organization4 | дубль |  |  | дубль |  |  |
+| 28 | Статус организации | /db/erp25ltsdoc/bookmark/Company/Organization5 | дубль |  |  | дубль |  |  |
+| 29 | Лица с правом подписи | /db/erp25ltsdoc/bookmark/Company/Organization6 | дубль |  |  | дубль |  |  |
+| 30 | Настройки НСИ для организации | /db/erp25ltsdoc/bookmark/Company/Organization7 | дубль |  |  | дубль |  |  |
+| 31 | Печать реквизитов организации | /db/erp25ltsdoc/bookmark/Company/Organization8 | дубль |  |  | дубль |  |  |
+| 32 | Управленческая организация | /db/erp25ltsdoc/bookmark/Company/Organization9 | дубль |  |  | дубль |  |  |
+| 33 | Выгрузка данных организации контрагенту | /db/erp25ltsdoc/bookmark/Company/Organization10 | дубль |  |  | дубль |  |  |
+| 34 | Физические лица | /db/erp25ltsdoc/bookmark/Company/Individuals | дубль |  |  | дубль |  |  |
+| 35 | Структура предприятия | /db/erp25ltsdoc/bookmark/Company/CompanyUnits | дубль |  |  | дубль |  |  |
+| 36 | Обособленные подразделения организации | /db/erp25ltsdoc/bookmark/Company/CompanyBranches | дубль |  |  | дубль |  |  |
+| 37 | Обособленные подразделения на отдельном балансе | /db/erp25ltsdoc/bookmark/Company/CompanyBranches1 | дубль |  |  | дубль |  |  |
+| 38 | Обособленные подразделения, не выделенные на отдельный баланс | /db/erp25ltsdoc/bookmark/Company/CompanyBranches2 | дубль |  |  | дубль |  |  |
+| 39 | Производственные календари | /db/erp25ltsdoc/bookmark/Company/Calendar | дубль |  |  | дубль |  |  |
+| 40 | 1.2. Номенклатура (товары, услуги, работы, тара) | /db/erp25ltsdoc/bookmark/Goods/Goods | ok | 2026-07-13 13:13:50 | 2026-07-13 13:15:31 | ok | 2026-07-13 13:15:31 | 2026-07-13 13:15:33 |
+| 41 | Характеристика номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsCharacter | дубль |  |  | дубль |  |  |
+| 42 | Виды номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsTypes | дубль |  |  | дубль |  |  |
+| 43 | Тип номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsType | дубль |  |  | дубль |  |  |
+| 44 | Настройка использования характеристик | /db/erp25ltsdoc/bookmark/Goods/CharacterSettings | дубль |  |  | дубль |  |  |
+| 45 | Настройки серий товаров | /db/erp25ltsdoc/bookmark/Goods/BatchesSettings | дубль |  |  | дубль |  |  |
+| 46 | Дополнительные реквизиты | /db/erp25ltsdoc/bookmark/Goods/AdditionalDetails | дубль |  |  | дубль |  |  |
+| 47 | Шаблоны наименований | /db/erp25ltsdoc/bookmark/Goods/NamePattern | дубль |  |  | дубль |  |  |
+| 48 | Видимость, контроль заполнения и уникальности реквизитов | /db/erp25ltsdoc/bookmark/Goods/FillingControl | дубль |  |  | дубль |  |  |
+| 49 | Настройка значений по умолчанию | /db/erp25ltsdoc/bookmark/Goods/DefaultFilling | дубль |  |  | дубль |  |  |
+| 50 | Дополнительные сведения | /db/erp25ltsdoc/bookmark/Goods/AdditionalInformation | дубль |  |  | дубль |  |  |
+| 51 | Подходы к организации списка «Номенклатура» | /db/erp25ltsdoc/bookmark/Goods/GoodListView | дубль |  |  | дубль |  |  |
+| 52 | Настройки быстрого отбора в списках номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodListFilters | дубль |  |  | дубль |  |  |
+| 53 | Настройки поиска в списках номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodListSEarch | дубль |  |  | дубль |  |  |
+| 54 | Группы номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsGroups | дубль |  |  | дубль |  |  |
+| 55 | Единицы измерения, наборы упаковок | /db/erp25ltsdoc/bookmark/Goods/UnitsAndPacks | дубль |  |  | дубль |  |  |
+| 56 | Указание количества в различных единицах измерения и допустимое отклонение при пересчете | /db/erp25ltsdoc/bookmark/Goods/CrossUnits | дубль |  |  | дубль |  |  |
+| 57 | Допустимое отклонение при отгрузке и приемке мерных товаров | /db/erp25ltsdoc/bookmark/Goods/UnitsDeviations | дубль |  |  | дубль |  |  |
+| 58 | Упаковки товарных мест | /db/erp25ltsdoc/bookmark/Goods/ItemsPacks | дубль |  |  | дубль |  |  |
+| 59 | Складская группа номенклатуры | /db/erp25ltsdoc/bookmark/Goods/WharehouseGroups | дубль |  |  | дубль |  |  |
+| 60 | Группы доступа номенклатуры | /db/erp25ltsdoc/bookmark/Goods/GoodsAccessGroups | дубль |  |  | дубль |  |  |
+| 61 | Качество товаров | /db/erp25ltsdoc/bookmark/Goods/GoodsQuality | дубль |  |  | дубль |  |  |
+| 62 | Штрихкодирование товаров | /db/erp25ltsdoc/bookmark/Goods/Barcoding | дубль |  |  | дубль |  |  |
+| 63 | Сертификаты | /db/erp25ltsdoc/bookmark/Goods/GoodsCertificates | дубль |  |  | дубль |  |  |
+| 64 | Интеграция с сервисом Росаккредитации по сертификатам и декларациям о соответствии | /db/erp25ltsdoc/bookmark/Goods/CertificatesCheck | дубль |  |  | дубль |  |  |
+| 65 | Сведения о производителе | /db/erp25ltsdoc/bookmark/Goods/Manufacturer | дубль |  |  | дубль |  |  |
+| 66 | Настройки регламентированного и финансового учета номенклатуры | /db/erp25ltsdoc/bookmark/Goods/FinanceSeting | дубль |  |  | дубль |  |  |
+| 67 | Описание товара и дополнительные реквизиты | /db/erp25ltsdoc/bookmark/Goods/GoodsInformation | дубль |  |  | дубль |  |  |
+| 68 | Классификация номенклатуры для прочих учетных задач | /db/erp25ltsdoc/bookmark/Goods/GoodsOtherClassification | дубль |  |  | дубль |  |  |
+| 69 | Учет тары | /db/erp25ltsdoc/bookmark/Goods/Packaging | дубль |  |  | дубль |  |  |
+| 70 | Динамические наборы | /db/erp25ltsdoc/bookmark/Goods/DynamicGoodsSets | дубль |  |  | дубль |  |  |
+| 71 | Товары, продаваемые совместно | /db/erp25ltsdoc/bookmark/Goods/GoodsComplements | дубль |  |  | дубль |  |  |
+| 72 | Работа с сервисом 1С:Номенклатура | /db/erp25ltsdoc/bookmark/Goods/Service1CNomenklatura | дубль |  |  | дубль |  |  |
+| 73 | Загрузка номенклатуры из сторонних систем | /db/erp25ltsdoc/bookmark/Goods/GoodsImportFromExtPDM | дубль |  |  | дубль |  |  |
+| 74 | 1.3. Серии товаров | /db/erp25ltsdoc/bookmark/Batches/Batches | ok | 2026-07-13 13:32:16 | 2026-07-13 13:32:49 | ok | 2026-07-13 13:32:49 | 2026-07-13 13:32:50 |
+| 75 | Принцип регистрации серий товаров | /db/erp25ltsdoc/bookmark/Batches/BatchRegistrationPrinciples | дубль |  |  | дубль |  |  |
+| 76 | Политика учета серий | /db/erp25ltsdoc/bookmark/Batches/BatchPolitics | дубль |  |  | дубль |  |  |
+| 77 | Указание серий в документах | /db/erp25ltsdoc/bookmark/Batches/BatchesInDocuments | дубль |  |  | дубль |  |  |
+| 78 | Штрихкоды серий номенклатуры | /db/erp25ltsdoc/bookmark/Batches/BatchBarcode | дубль |  |  | дубль |  |  |
+| 79 | Справочное указание серий | /db/erp25ltsdoc/bookmark/Batches/ReferenceBatch | дубль |  |  | дубль |  |  |
+| 80 | Дополнительный разрез складского учета | /db/erp25ltsdoc/bookmark/Batches/BatchInvenory | дубль |  |  | дубль |  |  |
+| 81 | Учет себестоимости по сериям | /db/erp25ltsdoc/bookmark/Batches/BatchCost | дубль |  |  | дубль |  |  |
+| 82 | Указание серий на адресном складе | /db/erp25ltsdoc/bookmark/Batches/TargetedStockBatchinventory | дубль |  |  | дубль |  |  |
+| 83 | Учет серий при обособлении товаров | /db/erp25ltsdoc/bookmark/Batches/SeparativeBatchInventory | дубль |  |  | дубль |  |  |
+| 84 | Указание серий при подборе количества товаров | /db/erp25ltsdoc/bookmark/Batches/BatchSelection | дубль |  |  | дубль |  |  |
+| 85 | Серии в отчетах | /db/erp25ltsdoc/bookmark/Batches/BatchReports | дубль |  |  | дубль |  |  |
+| 86 | 1.4. Деловые партнеры | /db/erp25ltsdoc/bookmark/Partners/Partners | ok | 2026-07-13 13:33:09 | 2026-07-13 13:33:34 | ok | 2026-07-13 13:33:34 | 2026-07-13 13:33:34 |
+| 87 | Регистрация нового делового партнера | /db/erp25ltsdoc/bookmark/Partners/NewPartner | дубль |  |  | дубль |  |  |
+| 88 | Ввод сведений о контрагенте | /db/erp25ltsdoc/bookmark/Partners/Contragent | дубль |  |  | дубль |  |  |
+| 89 | Загрузка данных контрагента из файла | /db/erp25ltsdoc/bookmark/Partners/PartnerLoad | дубль |  |  | дубль |  |  |
+| 90 | Автоматическое заполнение реквизитов контрагентов | /db/erp25ltsdoc/bookmark/Partners/PartnersFilling | дубль |  |  | дубль |  |  |
+| 91 | Проверка контрагентов | /db/erp25ltsdoc/bookmark/Partners/PartnersChecking | дубль |  |  | дубль |  |  |
+| 92 | История изменений реквизитов контрагента | /db/erp25ltsdoc/bookmark/Partners/ContragentHistory | дубль |  |  | дубль |  |  |
+| 93 | Особенность работы с контрагентами- физическими лицами и индивидуальными предпринимателями | /db/erp25ltsdoc/bookmark/Partners/IPFL | дубль |  |  | дубль |  |  |
+| 94 | Контрагенты-нерезиденты | /db/erp25ltsdoc/bookmark/Partners/NonresidentCounterparties | дубль |  |  | дубль |  |  |
+| 95 | Обособленные подразделения контрагентов | /db/erp25ltsdoc/bookmark/Partners/PartnersBranches | дубль |  |  | дубль |  |  |
+| 96 | Ввод информации о компании, которая состоит из нескольких юридических лиц | /db/erp25ltsdoc/bookmark/Partners/Holding1 | дубль |  |  | дубль |  |  |
+| 97 | Ввод информации о сети магазинов (множество партнеров, одно юридическое лицо) | /db/erp25ltsdoc/bookmark/Partners/Holding2 | дубль |  |  | дубль |  |  |
+| 98 | Взаимодействие с партнерами с использованием сервиса «1С:Бизнес-сеть» | /db/erp25ltsdoc/bookmark/Partners/PartnersBusinessNetwork | дубль |  |  | дубль |  |  |
+| 99 | Получение сводной информации по партнеру | /db/erp25ltsdoc/bookmark/Partners/PartnerInfo | дубль |  |  | дубль |  |  |
+| 100 | 1.A. Описание отдельных учетных задач | /db/erp25ltsdoc/bookmark/CatalogiesApp/CatalogiesApp | ok | 2026-07-13 13:33:52 | 2026-07-13 13:33:54 | ok | 2026-07-13 13:33:54 | 2026-07-13 13:33:55 |
+| 101 | 1.A.1. Настройка политики учета серий для отдельных сценариев | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesSetup | ok | 2026-07-13 13:33:55 | 2026-07-13 13:34:33 | ok | 2026-07-13 13:34:33 | 2026-07-13 13:34:33 |
+| 102 | Использование серийных номеров в управлении рекламациями и организации постпродажного обслуживания | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesClaim | дубль |  |  | дубль |  |  |
+| 103 | Использование серий для учета и управления остатками товаров по срокам годности | /db/erp25ltsdoc/bookmark/SeriesSetup/Seriesexpiration | дубль |  |  | дубль |  |  |
+| 104 | Использование серий для учета остатков товаров по единицам хранения | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesResidue | дубль |  |  | дубль |  |  |
+| 105 | Серия как разрез финансового учета | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesAccnt | дубль |  |  | дубль |  |  |
+| 106 | Использование серий для учета алкогольной продукции | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesAlco | дубль |  |  | дубль |  |  |
+| 107 | Использование серий для подконтрольной продукции ВетИС | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesVetIS | дубль |  |  | дубль |  |  |
+| 108 | Использование серий для учет МРЦ табачной продукции | /db/erp25ltsdoc/bookmark/SeriesSetup/SeriesTabaco | дубль |  |  | дубль |  |  |
+| 109 | 1.A.2. Разработка структуры номенклатурного справочника | /db/erp25ltsdoc/bookmark/ProductCatalogDesign/ProductCatalogDesign | ok | 2026-07-13 13:34:42 | 2026-07-13 13:35:06 | ok | 2026-07-13 13:35:06 | 2026-07-13 13:35:07 |
 | 110 | Классификация и иерархия номенклатуры | /db/erp25ltsdoc/bookmark/ProductCatalogDesign/Classification |  |  |  |  |  |  |
 | 111 | Единицы измерения и упаковки | /db/erp25ltsdoc/bookmark/ProductCatalogDesign/Units |  |  |  |  |  |  |
 | 112 | Использование серии | /db/erp25ltsdoc/bookmark/ProductCatalogDesign/Series |  |  |  |  |  |  |
