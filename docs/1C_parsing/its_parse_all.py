@@ -159,6 +159,10 @@ def fetch_document(s: requests.Session, src: str, stem: str) -> Path:
     soup = BeautifulSoup(r.text, "html.parser")
     for tag in soup(["script", "style", "link"]):
         tag.decompose()
+    for a in soup.find_all("a"):
+        # ссылки на якоря других глав (<a href="#_refNNN">) ведут в typst
+        # к label, которого в документе нет - сборка PDF падает. Текст оставляем.
+        a.unwrap()
     for i, img in enumerate(soup.find_all("img")):
         img_src = img.get("src")
         if not img_src:
