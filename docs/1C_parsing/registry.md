@@ -6,10 +6,10 @@
 
 | N | Название | URL | Скачано | Скачивание начало | Скачивание конец | PDF | PDF начало | PDF конец |
 |-|-|-|-|-|-|-|-|-|
-| 1 | 1С:ERP Управление предприятием 2, редакция 2.5 LTS | /db/erp25ltsdoc/bookmark/Index/Index |  |  |  |  |  |  |
-| 2 | Введение | /db/erp25ltsdoc/bookmark/Introduction/Introduction |  |  |  |  |  |  |
-| 3 | О программе | /db/erp25ltsdoc/bookmark/Introduction/About |  |  |  |  |  |  |
-| 4 | Технологии управления проектами | /db/erp25ltsdoc/bookmark/Introduction/ProjectManagement |  |  |  |  |  |  |
+| 1 | 1С:ERP Управление предприятием 2, редакция 2.5 LTS | /db/erp25ltsdoc/bookmark/Index/Index | ok | 2026-07-13 11:59:48 | 2026-07-13 11:59:50 | ok | 2026-07-13 11:59:50 | 2026-07-13 11:59:51 |
+| 2 | Введение | /db/erp25ltsdoc/bookmark/Introduction/Introduction | ok | 2026-07-13 11:59:51 | 2026-07-13 12:00:00 | ok | 2026-07-13 12:00:00 | 2026-07-13 12:00:01 |
+| 3 | О программе | /db/erp25ltsdoc/bookmark/Introduction/About | дубль |  |  | дубль |  |  |
+| 4 | Технологии управления проектами | /db/erp25ltsdoc/bookmark/Introduction/ProjectManagement | дубль |  |  | дубль |  |  |
 | 5 | Описание изменений в новых версиях | /db/erp25ltsdoc/bookmark/Introduction/WhatsNew |  |  |  |  |  |  |
 | 6 | Ознакомительные версии и планы разработки | /db/erp25ltsdoc/bookmark/Introduction/WhatsNewPlan |  |  |  |  |  |  |
 | 7 | Демобаза | /db/erp25ltsdoc/bookmark/Introduction/DemoBase |  |  |  |  |  |  |

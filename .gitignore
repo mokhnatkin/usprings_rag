@@ -30,3 +30,9 @@ eval/ab-report.md
 
 # Учётные данные портала 1С:ИТС
 docs/1C_parsing/1C_portal_credentials.txt
+
+# Рабочие файлы пакетного парсинга ИТС (HTML и картинки до сборки PDF)
+docs/1C_parsing/work/
+
+# Полный корпус PDF из парсинга ИТС (гигабайты, пересобирается its_parse_all.py)
+docs/manuals/parsed/*.pdf
