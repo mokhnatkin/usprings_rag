@@ -27,3 +27,6 @@ Thumbs.db
 # Производные артефакты eval: пересобираются build_contexts.py / run_ab.py
 eval/contexts.json
 eval/ab-report.md
+
+# Учётные данные портала 1С:ИТС
+docs/1C_parsing/1C_portal_credentials.txt
