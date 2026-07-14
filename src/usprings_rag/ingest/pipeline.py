@@ -38,7 +38,7 @@ def relative_source_path(path: Path) -> str:
     """Путь относительно папки инструкций, POSIX-разделители.
 
     Абсолютный путь хоста не переживёт перенос в контейнер и не годится для
-    URL раздачи PDF, поэтому в БД храним относительный (напр. `IT_1C/Отгрузка.pdf`).
+    URL раздачи PDF, поэтому в БД храним относительный (напр. `its_erp/Отгрузка.pdf`).
     """
     manuals_root = Path(settings.manuals_dir).resolve()
     return path.resolve().relative_to(manuals_root).as_posix()
