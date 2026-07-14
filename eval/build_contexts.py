@@ -19,6 +19,7 @@ from pathlib import Path
 
 import yaml
 
+from usprings_rag.collection import get_collection
 from usprings_rag.config import settings
 from usprings_rag.db import SessionLocal
 from usprings_rag.embeddings import BGEEmbeddingProvider
@@ -38,10 +39,12 @@ def main() -> None:
     contexts = []
     with SessionLocal() as session:
         for item in questions:
-            result = search(session, provider, item["q"])
+            collection = get_collection(item["collection"])
+            result = search(session, provider, item["q"], collection)
             contexts.append(
                 {
                     "q": item["q"],
+                    "collection": collection.code,
                     "kind": item["kind"],
                     "expected_doc": item.get("expected_doc"),
                     "must_contain": item.get("must_contain", []),
@@ -53,7 +56,6 @@ def main() -> None:
 
     payload = {
         "embedding_model": settings.embedding_model,
-        "threshold": settings.similarity_threshold,
         "top_k": settings.top_k,
         "contexts": contexts,
     }
@@ -66,7 +68,7 @@ def main() -> None:
         f"\nСохранено: {CONTEXTS_FILE}\n"
         f"  вопросов: {len(contexts)}, прошли порог: {passed}, "
         f"отказ по порогу: {len(contexts) - passed}\n"
-        f"  порог: {settings.similarity_threshold}, top_k: {settings.top_k}"
+        f"  порог - свой у каждой коллекции, top_k: {settings.top_k}"
     )
 
 
