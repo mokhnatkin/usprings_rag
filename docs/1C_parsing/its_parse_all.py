@@ -98,9 +98,14 @@ def get_retry(s: requests.Session, url: str) -> requests.Response:
 
 
 def sanitize(name: str) -> str:
-    """Имя файла для Windows: убрать запрещённые символы, ограничить длину."""
-    name = re.sub(r'[<>:"/\\|?*]', "_", name).strip(" .")
-    return name[:100]
+    """Имя файла для Windows: убрать запрещённые символы, ограничить длину.
+
+    Обрезка идёт до strip: хвостовой пробел (или точка) после обрезки Windows
+    не переваривает - каталог "имя " не находится как промежуточный компонент
+    пути, и mkdir падает с WinError 3.
+    """
+    name = re.sub(r'[<>:"/\\|?*]', "_", name)
+    return name[:100].strip(" .")
 
 
 def load_registry() -> tuple[list[str], list[dict]]:
