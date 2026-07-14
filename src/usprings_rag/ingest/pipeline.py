@@ -9,9 +9,10 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from ..collection import Collection
 from ..config import settings
 from ..embeddings import EmbeddingProvider
 from ..models import Chunk, Document
@@ -43,8 +44,26 @@ def relative_source_path(path: Path) -> str:
     return path.resolve().relative_to(manuals_root).as_posix()
 
 
+def ensure_partition(session: Session, collection: Collection) -> None:
+    """Создать секцию chunks под коллекцию, если её ещё нет.
+
+    Добавление коллекции не должно требовать ручной DDL. HNSW-индекс Postgres
+    заводит в новой секции сам - он объявлен на родительской таблице.
+    """
+    session.execute(
+        text(
+            f"CREATE TABLE IF NOT EXISTS chunks_{collection.code} "
+            f"PARTITION OF chunks FOR VALUES IN ('{collection.code}')"
+        )
+    )
+    session.commit()
+
+
 def ingest_file(
-    session: Session, provider: EmbeddingProvider, path: Path
+    session: Session,
+    provider: EmbeddingProvider,
+    path: Path,
+    collection: Collection,
 ) -> IngestResult:
     """Обработать один PDF: парсинг, чанкинг, векторизация, запись в БД."""
     source_path = relative_source_path(path)
@@ -67,11 +86,13 @@ def ingest_file(
     vectors = provider.embed_texts([c.content for c in chunks])
 
     document = Document(
+        collection=collection.code,
         title=path.stem,
         source_path=source_path,
         content_hash=content_hash,
         chunks=[
             Chunk(
+                collection=collection.code,  # денормализация: фильтр стоит на chunks
                 chunk_index=c.chunk_index,
                 page_from=c.page_from,
                 page_to=c.page_to,

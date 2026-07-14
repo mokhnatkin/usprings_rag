@@ -17,16 +17,21 @@ from dataclasses import dataclass
 from openai import OpenAI
 from sqlalchemy.orm import Session
 
+from .collection import Collection
 from .embeddings import EmbeddingProvider
 from .llm import NO_ANSWER_MARKER, generate, stream_generate
 from .retrieval import search
 
 logger = logging.getLogger(__name__)
 
-REFUSAL_TEXT = (
-    "К сожалению, в доступных инструкциях нет информации по этому вопросу. "
-    "Задайте вопрос по инструкциям 1С ERP или обратитесь в ИТ-службу."
-)
+
+def refusal_text(collection: Collection) -> str:
+    """Отказ называет базу, по которой искали: иначе непонятно, где нет ответа."""
+    return (
+        f"К сожалению, в инструкциях {collection.title} нет информации по этому "
+        f"вопросу. Задайте вопрос по инструкциям {collection.title} "
+        f"или обратитесь в ИТ-службу."
+    )
 
 
 @dataclass
@@ -67,10 +72,10 @@ def _collect_sources(hits) -> list[Source]:
     return list(sources.values())
 
 
-def _refusal(best_similarity: float, elapsed: float) -> Answer:
+def _refusal(collection: Collection, best_similarity: float, elapsed: float) -> Answer:
     """Вежливый отказ без источников - они бы ничего не подтверждали."""
     return Answer(
-        text=REFUSAL_TEXT,
+        text=refusal_text(collection),
         refused=True,
         sources=[],
         best_similarity=best_similarity,
@@ -83,6 +88,7 @@ def stream_answer(
     provider: EmbeddingProvider,
     client: OpenAI,
     question: str,
+    collection: Collection,
     model: str | None = None,
 ) -> Iterator[tuple[str, str | Answer]]:
     """Тот же сценарий, но текст ответа отдаётся по мере генерации.
@@ -96,16 +102,17 @@ def stream_answer(
     и дальше стримим без задержки.
     """
     started = time.perf_counter()
-    result = search(session, provider, question)
+    result = search(session, provider, question, collection)
 
     if not result.passed:
         elapsed = time.perf_counter() - started
         logger.info(
-            "answer verdict=refused best_similarity=%.4f elapsed=%.2fs",
+            "answer collection=%s verdict=refused best_similarity=%.4f elapsed=%.2fs",
+            collection.code,
             result.best_similarity,
             elapsed,
         )
-        yield "done", _refusal(result.best_similarity, elapsed)
+        yield "done", _refusal(collection, result.best_similarity, elapsed)
         return
 
     hits = result.relevant
@@ -122,11 +129,13 @@ def stream_answer(
         if stripped.startswith(NO_ANSWER_MARKER):
             elapsed = time.perf_counter() - started
             logger.info(
-                "answer verdict=no_answer_in_context best_similarity=%.4f elapsed=%.2fs",
+                "answer collection=%s verdict=no_answer_in_context "
+                "best_similarity=%.4f elapsed=%.2fs",
+                collection.code,
                 result.best_similarity,
                 elapsed,
             )
-            yield "done", _refusal(result.best_similarity, elapsed)
+            yield "done", _refusal(collection, result.best_similarity, elapsed)
             return
         if NO_ANSWER_MARKER.startswith(stripped):
             continue  # пока неотличимо от начала маркера - придерживаем
@@ -138,7 +147,9 @@ def stream_answer(
 
     elapsed = time.perf_counter() - started
     logger.info(
-        "answer verdict=answered chunks=%d best_similarity=%.4f elapsed=%.2fs (stream)",
+        "answer collection=%s verdict=answered chunks=%d best_similarity=%.4f "
+        "elapsed=%.2fs (stream)",
+        collection.code,
         len(hits),
         result.best_similarity,
         elapsed,
@@ -160,29 +171,25 @@ def answer_question(
     provider: EmbeddingProvider,
     client: OpenAI,
     question: str,
+    collection: Collection,
     model: str | None = None,
 ) -> Answer:
-    """Ответить на вопрос по базе знаний или вежливо отказать.
+    """Ответить на вопрос по выбранной коллекции или вежливо отказать.
 
     `model` переопределяет `OPENROUTER_MODEL` - нужно для A/B-сравнения моделей.
     """
     started = time.perf_counter()
-    result = search(session, provider, question)
+    result = search(session, provider, question, collection)
 
     if not result.passed:
         elapsed = time.perf_counter() - started
         logger.info(
-            "answer verdict=refused best_similarity=%.4f elapsed=%.2fs",
+            "answer collection=%s verdict=refused best_similarity=%.4f elapsed=%.2fs",
+            collection.code,
             result.best_similarity,
             elapsed,
         )
-        return Answer(
-            text=REFUSAL_TEXT,
-            refused=True,
-            sources=[],
-            best_similarity=result.best_similarity,
-            elapsed_seconds=elapsed,
-        )
+        return _refusal(collection, result.best_similarity, elapsed)
 
     hits = result.relevant
     response = generate(client, question, hits, model=model)
@@ -193,20 +200,18 @@ def answer_question(
     # ответом источники нельзя - они ничего не подтверждают.
     if NO_ANSWER_MARKER in response.text:
         logger.info(
-            "answer verdict=no_answer_in_context best_similarity=%.4f elapsed=%.2fs",
+            "answer collection=%s verdict=no_answer_in_context "
+            "best_similarity=%.4f elapsed=%.2fs",
+            collection.code,
             result.best_similarity,
             elapsed,
         )
-        return Answer(
-            text=REFUSAL_TEXT,
-            refused=True,
-            sources=[],
-            best_similarity=result.best_similarity,
-            elapsed_seconds=elapsed,
-        )
+        return _refusal(collection, result.best_similarity, elapsed)
 
     logger.info(
-        "answer verdict=answered chunks=%d best_similarity=%.4f elapsed=%.2fs",
+        "answer collection=%s verdict=answered chunks=%d best_similarity=%.4f "
+        "elapsed=%.2fs",
+        collection.code,
         len(hits),
         result.best_similarity,
         elapsed,

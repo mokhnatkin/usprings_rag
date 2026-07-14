@@ -1,5 +1,6 @@
 const form = document.getElementById("ask-form");
 const questionInput = document.getElementById("question");
+const collectionSelect = document.getElementById("collection");
 const submitButton = document.getElementById("submit");
 const resetButton = document.getElementById("reset");
 const statusBlock = document.getElementById("status");
@@ -10,6 +11,19 @@ const sourcesList = document.getElementById("sources");
 const metaBlock = document.getElementById("meta");
 
 let stream = null;
+
+// Список коллекций - с сервера: справочник один и тот же для поиска и для UI.
+// Первая в списке (1С:ERP) выбрана по умолчанию - основная база пилота.
+fetch("/collections")
+  .then((response) => response.json())
+  .then((collections) => {
+    for (const collection of collections) {
+      const option = document.createElement("option");
+      option.value = collection.code;
+      option.textContent = collection.title;
+      collectionSelect.append(option);
+    }
+  });
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -27,7 +41,11 @@ form.addEventListener("submit", (event) => {
   statusBlock.classList.remove("hidden", "error");
   statusBlock.textContent = "Думаю...";
 
-  stream = new EventSource(`/ask/stream?question=${encodeURIComponent(question)}`);
+  const collection = collectionSelect.value;
+  stream = new EventSource(
+    `/ask/stream?question=${encodeURIComponent(question)}` +
+      `&collection=${encodeURIComponent(collection)}`
+  );
 
   stream.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
@@ -83,8 +101,10 @@ function finish(data) {
     sourcesList.append(item);
   }
 
+  // База знаний в meta: видно, по какой коллекции получен ответ или отказ.
   metaBlock.textContent =
-    `сходство: ${data.best_similarity} | время: ${data.elapsed_seconds} с`;
+    `база: ${data.collection} | сходство: ${data.best_similarity} ` +
+    `| время: ${data.elapsed_seconds} с`;
 }
 
 function fail(message) {

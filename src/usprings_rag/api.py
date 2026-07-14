@@ -22,6 +22,7 @@ from openai import RateLimitError
 from pydantic import BaseModel
 
 from .answer import answer_question, stream_answer
+from .collection import COLLECTIONS, DEFAULT_COLLECTION, CollectionCode, get_collection
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
@@ -64,8 +65,25 @@ def index() -> FileResponse:
     return FileResponse(PACKAGE_DIR / "templates" / "index.html")
 
 
+class CollectionOut(BaseModel):
+    code: str
+    title: str
+
+
+@app.get("/collections", response_model=list[CollectionOut])
+def list_collections() -> list[CollectionOut]:
+    """Коллекции для селектора в UI - из того же справочника, что и поиск."""
+    return [
+        CollectionOut(code=item.code, title=item.title)
+        for item in COLLECTIONS.values()
+    ]
+
+
 class AskRequest(BaseModel):
     question: str
+    # Тип-enum: неизвестная коллекция отсекается валидацией (422), а не уходит
+    # в молчаливый поиск по всей базе.
+    collection: CollectionCode = DEFAULT_COLLECTION
 
 
 class SourceOut(BaseModel):
@@ -78,6 +96,7 @@ class SourceOut(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     refused: bool
+    collection: str
     sources: list[SourceOut]
     best_similarity: float
     elapsed_seconds: float
@@ -85,15 +104,20 @@ class AskResponse(BaseModel):
 
 @app.post("/ask", response_model=AskResponse)
 def ask(request: AskRequest) -> AskResponse:
-    """Вопрос -> поиск -> порог -> (отказ | ответ LLM) + источники.
+    """Вопрос -> поиск по коллекции -> порог -> (отказ | ответ LLM) + источники.
 
     Лимит бесплатного тира OpenRouter (429) - воспроизводимая ситуация пилота,
     отдаём её отдельным понятным статусом, а не общей ошибкой 500.
     """
+    collection = get_collection(request.collection)
     with SessionLocal() as session:
         try:
             result = answer_question(
-                session, resources["provider"], resources["client"], request.question
+                session,
+                resources["provider"],
+                resources["client"],
+                request.question,
+                collection,
             )
         except RateLimitError:
             logger.warning("LLM rate limit (429) - бесплатный тир OpenRouter занят")
@@ -107,6 +131,7 @@ def ask(request: AskRequest) -> AskResponse:
     return AskResponse(
         answer=result.text,
         refused=result.refused,
+        collection=collection.title,
         sources=[SourceOut(**vars(source)) for source in result.sources],
         best_similarity=round(result.best_similarity, 4),
         elapsed_seconds=round(result.elapsed_seconds, 2),
@@ -119,7 +144,9 @@ def _sse(event: dict) -> str:
 
 
 @app.get("/ask/stream")
-def ask_stream(question: str) -> StreamingResponse:
+def ask_stream(
+    question: str, collection: CollectionCode = DEFAULT_COLLECTION
+) -> StreamingResponse:
     """То же, что /ask, но ответ идёт по мере генерации (SSE).
 
     Генерация LLM доминирует в задержке, поэтому первые слова появляются через
@@ -128,12 +155,17 @@ def ask_stream(question: str) -> StreamingResponse:
 
     GET (а не POST) - чтобы на клиенте работал штатный EventSource.
     """
+    selected = get_collection(collection)
 
     def events() -> Iterator[str]:
         with SessionLocal() as session:
             try:
                 for kind, payload in stream_answer(
-                    session, resources["provider"], resources["client"], question
+                    session,
+                    resources["provider"],
+                    resources["client"],
+                    question,
+                    selected,
                 ):
                     if kind == "delta":
                         yield _sse({"type": "delta", "text": payload})
@@ -143,6 +175,7 @@ def ask_stream(question: str) -> StreamingResponse:
                                 "type": "done",
                                 "answer": payload.text,
                                 "refused": payload.refused,
+                                "collection": selected.title,
                                 "sources": [vars(s) for s in payload.sources],
                                 "best_similarity": round(payload.best_similarity, 4),
                                 "elapsed_seconds": round(payload.elapsed_seconds, 2),

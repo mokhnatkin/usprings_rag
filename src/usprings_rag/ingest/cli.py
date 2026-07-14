@@ -1,23 +1,24 @@
-"""CLI ingest: обход папки с PDF -> парсинг, чанкинг, векторизация, запись в БД.
+"""CLI ingest: обход папки коллекции с PDF -> парсинг, чанкинг, векторизация, БД.
 
-Запуск: uv run ingest [dir]         полный прогон с записью в БД
-        uv run ingest [dir] --dry-run   только парсинг и чанкинг со статистикой
+Запуск: uv run ingest --collection erp            полный прогон с записью в БД
+        uv run ingest --collection zup --dry-run  только парсинг и чанкинг
 
-По умолчанию dir = docs/manuals/IT_1C.
+Папка берётся из справочника коллекций (коллекция = папка); её можно
+переопределить позиционным аргументом - например, чтобы залить в коллекцию
+подпапку или отдельный каталог.
 """
 
 import argparse
 import sys
 from pathlib import Path
 
+from ..collection import COLLECTIONS, get_collection
 from ..config import settings
 from ..db import SessionLocal
 from ..embeddings import BGEEmbeddingProvider
 from .chunker import chunk_pages, estimate_tokens
 from .pdf import extract_pages
-from .pipeline import ingest_file
-
-DEFAULT_DIR = Path("docs/manuals/IT_1C")
+from .pipeline import ensure_partition, ingest_file
 
 
 def _dry_run(directory: Path) -> None:
@@ -52,8 +53,9 @@ def _dry_run(directory: Path) -> None:
             )
 
 
-def _ingest(directory: Path) -> None:
-    """Полный прогон: векторизация чанков и запись документов в БД."""
+def _ingest(directory: Path, collection_code: str) -> None:
+    """Полный прогон: векторизация чанков и запись документов в коллекцию."""
+    collection = get_collection(collection_code)
     pdfs = sorted(directory.glob("*.pdf"))
     if not pdfs:
         print(f"Нет PDF в {directory}")
@@ -62,21 +64,28 @@ def _ingest(directory: Path) -> None:
     print(f"Загрузка модели эмбеддингов {settings.embedding_model}...")
     provider = BGEEmbeddingProvider()
 
-    print(f"Ingest: {len(pdfs)} PDF из {directory}\n")
+    print(f"Ingest: {len(pdfs)} PDF из {directory} -> коллекция {collection.code}\n")
     with SessionLocal() as session:
+        ensure_partition(session, collection)
         for pdf in pdfs:
-            result = ingest_file(session, provider, pdf)
+            result = ingest_file(session, provider, pdf, collection)
             print(f"  [{result.status}] {pdf.name} - чанков: {result.chunks}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest PDF в базу знаний RAG")
     parser.add_argument(
+        "--collection",
+        required=True,
+        choices=[code.value for code in COLLECTIONS],
+        help="коллекция (база знаний), в которую грузим документы",
+    )
+    parser.add_argument(
         "directory",
         nargs="?",
         type=Path,
-        default=DEFAULT_DIR,
-        help=f"папка с PDF (по умолчанию {DEFAULT_DIR})",
+        default=None,
+        help="папка с PDF (по умолчанию папка коллекции)",
     )
     parser.add_argument(
         "--dry-run",
@@ -85,14 +94,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if not args.directory.is_dir():
-        print(f"Папка не найдена: {args.directory}", file=sys.stderr)
+    collection = get_collection(args.collection)
+    directory = args.directory or Path(settings.manuals_dir) / collection.folder
+    if not directory.is_dir():
+        print(f"Папка не найдена: {directory}", file=sys.stderr)
         raise SystemExit(1)
 
     if args.dry_run:
-        _dry_run(args.directory)
+        _dry_run(directory)
     else:
-        _ingest(args.directory)
+        _ingest(directory, args.collection)
 
 
 if __name__ == "__main__":

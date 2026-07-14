@@ -10,11 +10,14 @@
   <main>
     <h1>Ассистент по инструкциям</h1>
     <p class="subtitle">
-      Задайте вопрос по инструкциям 1С ERP. Ответ формируется только по документам
-      базы знаний, со ссылками на исходные файлы.
+      Выберите базу знаний и задайте вопрос. Ответ формируется только по документам
+      выбранной базы, со ссылками на исходные файлы.
     </p>
 
     <form id="ask-form">
+      <label class="field" for="collection">База знаний</label>
+      <select id="collection" name="collection"></select>
+
       <textarea id="question" rows="3" placeholder="Например: как запланировать отгрузку, если на складе нет остатков?" required></textarea>
       <div class="actions">
         <button type="submit" id="submit">Спросить</button>

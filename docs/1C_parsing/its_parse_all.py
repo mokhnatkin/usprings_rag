@@ -1,14 +1,18 @@
-"""Пакетный парсер всех инструкций ИТС по registry.md: текст + картинки -> PDF.
+"""Пакетный парсер инструкций ИТС по реестру базы: текст + картинки -> PDF.
 
-Запуск: uv run --with requests --with beautifulsoup4 python its_parse_all.py [--limit N]
+Запуск: uv run --with requests --with beautifulsoup4 python its_parse_all.py [--db zupcorpdoc] [--limit N]
 (из папки docs/1C_parsing; рекомендуется PYTHONIOENCODING=utf-8)
 
-Идёт по registry.md, для каждого раздела скачивает документ с картинками и
-собирает PDF в docs/manuals/parsed/. Статусы и таймстемпы пишет обратно в
-реестр после каждого раздела - прерванный прогон продолжается с места
-остановки. Сетевые запросы с ретраями; ошибки помечаются в реестре
-(err: причина), прогон продолжается. Разделы, ссылающиеся на уже скачанный
-документ (глава = несколько подразделов), помечаются как "дубль".
+База задаётся `--db` (по умолчанию erp25ltsdoc); от неё зависят реестр
+`registry-<db>.md`, рабочая папка `work/<db>/` и папка PDF - она же папка
+коллекции (`docs/manuals/its_erp/`, `docs/manuals/its_zup/`).
+
+Идёт по реестру, для каждого раздела скачивает документ с картинками и
+собирает PDF. Статусы и таймстемпы пишет обратно в реестр после каждого
+раздела - прерванный прогон продолжается с места остановки. Сетевые запросы
+с ретраями; ошибки помечаются в реестре (err: причина), прогон продолжается.
+Разделы, ссылающиеся на уже скачанный документ (глава = несколько
+подразделов), помечаются как "дубль".
 
 Требуются pandoc и typst в PATH. Учётные данные - 1C_portal_credentials.txt.
 """
@@ -19,6 +23,7 @@ import re
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote, urljoin
@@ -34,11 +39,33 @@ CAS_URL = (
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"}
 
 HERE = Path(__file__).parent
-REGISTRY = HERE / "registry.md"
-WORK = HERE / "work"
-OUT_DIR = HERE.parent / "manuals" / "parsed"
 PAUSE = 0.7  # сек между HTTP-запросами (DDoS-Guard)
 RETRY_WAITS = [5, 30]  # паузы между 3 попытками
+
+DEFAULT_DB = "erp25ltsdoc"
+# База ИТС -> папка коллекции в docs/manuals (коллекция = папка, см. backlog B1)
+DB_DIRS = {"erp25ltsdoc": "its_erp", "zupcorpdoc": "its_zup"}
+
+
+@dataclass
+class Target:
+    """Пути и URL, производные от идентификатора базы ИТС."""
+
+    db: str
+    registry: Path
+    work: Path
+    out_dir: Path
+
+
+def target_for(db: str) -> Target:
+    if db not in DB_DIRS:
+        raise SystemExit(f"неизвестная база: {db} (известны: {', '.join(DB_DIRS)})")
+    return Target(
+        db=db,
+        registry=HERE / f"registry-{db}.md",
+        work=HERE / "work" / db,
+        out_dir=HERE.parent / "manuals" / DB_DIRS[db],
+    )
 
 
 class FetchError(Exception):
@@ -57,10 +84,10 @@ def read_credentials() -> tuple[str, str]:
     )
 
 
-def login(s: requests.Session) -> None:
+def login(s: requests.Session, db: str) -> None:
     """Авторизация: визит за PHPSESSID, затем CAS-логин (см. parsing-guide.md)."""
     user, password = read_credentials()
-    s.get(BASE + "/db/erp25ltsdoc", headers=UA, timeout=60)
+    s.get(f"{BASE}/db/{db}", headers=UA, timeout=60)
     r = s.get(CAS_URL, headers=UA, timeout=60)
     form = BeautifulSoup(r.text, "html.parser").find("form", id="loginForm")
     if form is None:
@@ -108,9 +135,9 @@ def sanitize(name: str) -> str:
     return name[:100].strip(" .")
 
 
-def load_registry() -> tuple[list[str], list[dict]]:
-    """Читает registry.md: шапка (до разделителя таблицы включительно) и строки."""
-    lines = REGISTRY.read_text(encoding="utf-8").splitlines()
+def load_registry(registry: Path) -> tuple[list[str], list[dict]]:
+    """Читает реестр базы: шапка (до разделителя таблицы включительно) и строки."""
+    lines = registry.read_text(encoding="utf-8").splitlines()
     sep = next(i for i, ln in enumerate(lines) if ln.startswith("|-"))
     rows = []
     for ln in lines[sep + 1:]:
@@ -123,15 +150,15 @@ def load_registry() -> tuple[list[str], list[dict]]:
     return lines[:sep + 1], rows
 
 
-def save_registry(header: list[str], rows: list[dict]) -> None:
+def save_registry(registry: Path, header: list[str], rows: list[dict]) -> None:
     """Атомарная запись реестра (tmp + replace) - переживает прерывание."""
-    tmp = REGISTRY.with_suffix(".md.tmp")
+    tmp = registry.with_suffix(".md.tmp")
     with tmp.open("w", encoding="utf-8") as f:
         f.write("\n".join(header) + "\n")
         for r in rows:
             f.write("| {n} | {title} | {url} | {dl} | {dl_start} | {dl_end} "
                     "| {pdf} | {pdf_start} | {pdf_end} |\n".format(**r))
-    os.replace(tmp, REGISTRY)
+    os.replace(tmp, registry)
 
 
 def resolve_src(s: requests.Session, row: dict) -> tuple[str, str]:
@@ -148,9 +175,9 @@ def resolve_src(s: requests.Session, row: dict) -> tuple[str, str]:
     return src, sanitize(Path(unquote(src)).stem)
 
 
-def fetch_document(s: requests.Session, src: str, stem: str) -> Path:
+def fetch_document(s: requests.Session, target: Target, src: str, stem: str) -> Path:
     """Скачивает тело документа с картинками. Возвращает папку work."""
-    doc_dir = WORK / stem
+    doc_dir = target.work / stem
     (doc_dir / "img").mkdir(parents=True, exist_ok=True)
     time.sleep(PAUSE)
     try:
@@ -158,7 +185,7 @@ def fetch_document(s: requests.Session, src: str, stem: str) -> Path:
     except FetchError as e:  # 401 = сессия протухла: перелогин и одна попытка
         if str(e) != "HTTP 401":
             raise
-        login(s)
+        login(s, target.db)
         r = get_retry(s, BASE + requests.utils.quote(src))
 
     soup = BeautifulSoup(r.text, "html.parser")
@@ -193,12 +220,12 @@ def fetch_document(s: requests.Session, src: str, stem: str) -> Path:
     return doc_dir
 
 
-def build_pdf(doc_dir: Path, stem: str) -> Path:
-    """Собирает PDF из скачанного документа в OUT_DIR."""
+def build_pdf(doc_dir: Path, out_dir: Path, stem: str) -> Path:
+    """Собирает PDF из скачанного документа в папку коллекции."""
     breakable = doc_dir / "breakable.typ"
     breakable.write_text("#show figure: set block(breakable: true)\n")
     title = (doc_dir / "title.txt").read_text(encoding="utf-8")
-    pdf = OUT_DIR / f"{stem}.pdf"
+    pdf = out_dir / f"{stem}.pdf"
     res = subprocess.run(
         ["pandoc", "instruction.html", "-o", str(pdf), "--pdf-engine=typst",
          "-V", "mainfont=Times New Roman", "--metadata", f"title={title}",
@@ -228,21 +255,25 @@ def keep_awake(on: bool) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Пакетный парсинг ИТС по registry.md")
+    parser = argparse.ArgumentParser(description="Пакетный парсинг базы ИТС по её реестру")
+    parser.add_argument("--db", default=DEFAULT_DB,
+                        help=f"идентификатор базы ИТС (по умолчанию {DEFAULT_DB})")
     parser.add_argument("--limit", type=int, default=0,
                         help="обработать не более N разделов, включая дубли (0 - все)")
     parser.add_argument("--new", type=int, default=0,
                         help="остановиться после N новых PDF (дубли не считаются; 0 - все)")
     args = parser.parse_args()
 
+    target = target_for(args.db)
     keep_awake(True)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    header, rows = load_registry()
+    target.out_dir.mkdir(parents=True, exist_ok=True)
+    header, rows = load_registry(target.registry)
     pending = [r for r in rows if r["pdf"] != "ok" and r["dl"] != "дубль"]
-    print(f"[{now()}] разделов в реестре: {len(rows)}, к обработке: {len(pending)}")
+    print(f"[{now()}] база {target.db}, разделов в реестре: {len(rows)}, "
+          f"к обработке: {len(pending)}, PDF -> {target.out_dir}")
 
     s = requests.Session()
-    login(s)
+    login(s, target.db)
 
     done = errors = dups = 0
     for row in rows:
@@ -256,16 +287,16 @@ def main() -> None:
         try:
             row["dl"], row["dl_start"] = "", now()
             src, stem = resolve_src(s, row)
-            if (OUT_DIR / f"{stem}.pdf").exists():  # документ уже собран - не качаем
+            if (target.out_dir / f"{stem}.pdf").exists():  # уже собран - не качаем
                 row["dl"] = row["pdf"] = "дубль"
                 row["dl_start"] = ""
                 dups += 1
                 print(f"{label} дубль: {stem}")
             else:
-                doc_dir = fetch_document(s, src, stem)
+                doc_dir = fetch_document(s, target, src, stem)
                 row["dl"], row["dl_end"] = "ok", now()
                 row["pdf_start"] = now()
-                build_pdf(doc_dir, stem)
+                build_pdf(doc_dir, target.out_dir, stem)
                 row["pdf"], row["pdf_end"] = "ok", now()
                 done += 1
                 print(f"{label} ok: {stem}.pdf")
@@ -274,7 +305,7 @@ def main() -> None:
             row["pdf" if stage == "pdf" else "dl"] = f"err: {e}"[:80].replace("|", "/")
             errors += 1
             print(f"{label} {stage} err: {e}")
-        save_registry(header, rows)
+        save_registry(target.registry, header, rows)
         time.sleep(PAUSE)
 
     keep_awake(False)

@@ -1,16 +1,17 @@
-"""CLI для ручной проверки выдачи поиска (этап 5, до генерации ответа).
+"""CLI для ручной проверки выдачи поиска в выбранной коллекции.
 
-Запуск: uv run --no-sync search "вопрос"
-        uv run --no-sync search "вопрос" --top-k 10 --threshold 0.4
+Запуск: uv run --no-sync search "вопрос" --collection erp
+        uv run --no-sync search "вопрос" --collection zup --top-k 10 --threshold 0.4
 
 Показывает top-k чанков со сходством и пометкой относительно порога - чтобы
 глазами оценить качество поиска и накопить картину распределения близостей
-перед выбором SIMILARITY_THRESHOLD (подшаги 5.4-5.6).
+перед калибровкой порога коллекции.
 """
 
 import argparse
 import logging
 
+from .collection import COLLECTIONS, DEFAULT_COLLECTION, get_collection
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
@@ -21,6 +22,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Проверка семантического поиска")
     parser.add_argument("query", help="вопрос пользователя")
     parser.add_argument(
+        "--collection",
+        choices=[code.value for code in COLLECTIONS],
+        default=DEFAULT_COLLECTION.value,
+        help=f"коллекция (по умолчанию {DEFAULT_COLLECTION.value})",
+    )
+    parser.add_argument(
         "--top-k",
         type=int,
         default=settings.top_k,
@@ -29,13 +36,14 @@ def main() -> None:
     parser.add_argument(
         "--threshold",
         type=float,
-        default=settings.similarity_threshold,
-        help=f"порог сходства (по умолчанию {settings.similarity_threshold})",
+        default=None,
+        help="порог сходства (по умолчанию - порог коллекции)",
     )
     parser.add_argument(
         "--full", action="store_true", help="показать текст чанков целиком"
     )
     args = parser.parse_args()
+    collection = get_collection(args.collection)
 
     # INFO только для своих логгеров: на root он тянет шумные логи httpx/huggingface.
     logging.basicConfig(level=logging.WARNING, format="%(message)s")
@@ -45,10 +53,13 @@ def main() -> None:
     provider = BGEEmbeddingProvider()
 
     with SessionLocal() as session:
-        result = search(session, provider, args.query, args.top_k, args.threshold)
+        result = search(
+            session, provider, args.query, collection, args.top_k, args.threshold
+        )
 
     verdict = "выше порога" if result.passed else "НИЖЕ ПОРОГА (отказ)"
-    print(f"\nВопрос: {result.query}")
+    print(f"\nКоллекция: {collection.title}")
+    print(f"Вопрос: {result.query}")
     print(
         f"Лучшее сходство: {result.best_similarity:.4f} "
         f"при пороге {result.threshold:.2f} -> {verdict}\n"

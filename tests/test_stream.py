@@ -5,8 +5,11 @@
 """
 
 from usprings_rag import answer as answer_module
-from usprings_rag.answer import REFUSAL_TEXT, stream_answer
+from usprings_rag.answer import refusal_text, stream_answer
+from usprings_rag.collection import CollectionCode, get_collection
 from usprings_rag.retrieval import SearchHit, SearchResult
+
+ERP = get_collection(CollectionCode.ERP)
 
 
 def make_result(similarity: float) -> SearchResult:
@@ -14,7 +17,7 @@ def make_result(similarity: float) -> SearchResult:
         chunk_id=1,
         document_id=1,
         title="Отгрузка",
-        source_path="IT_1C/Отгрузка.pdf",
+        source_path="its_erp/Отгрузка.pdf",
         page_from=1,
         page_to=2,
         content="текст",
@@ -27,7 +30,7 @@ def make_result(similarity: float) -> SearchResult:
 def run_stream(monkeypatch, similarity: float, deltas: list[str]):
     monkeypatch.setattr(answer_module, "search", lambda *a, **k: make_result(similarity))
     monkeypatch.setattr(answer_module, "stream_generate", lambda *a, **k: iter(deltas))
-    events = list(stream_answer(None, None, None, "вопрос"))
+    events = list(stream_answer(None, None, None, "вопрос", ERP))
     text = "".join(payload for kind, payload in events if kind == "delta")
     done = next(payload for kind, payload in events if kind == "done")
     return text, done
@@ -38,7 +41,7 @@ def test_marker_never_reaches_client(monkeypatch):
     assert text == ""
     assert done.refused
     assert done.sources == []
-    assert done.text == REFUSAL_TEXT
+    assert done.text == refusal_text(ERP)
 
 
 def test_normal_answer_streams_and_keeps_sources(monkeypatch):
@@ -60,6 +63,6 @@ def test_below_threshold_refuses_without_calling_llm(monkeypatch):
 
     monkeypatch.setattr(answer_module, "stream_generate", fail)
     monkeypatch.setattr(answer_module, "search", lambda *a, **k: make_result(0.28))
-    events = list(stream_answer(None, None, None, "погода"))
+    events = list(stream_answer(None, None, None, "погода", ERP))
     assert [kind for kind, _ in events] == ["done"]
     assert events[0][1].refused

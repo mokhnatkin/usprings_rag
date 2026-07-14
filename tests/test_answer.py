@@ -10,7 +10,7 @@ def make_hit(document_id: int, title: str, page_from: int, page_to: int) -> Sear
         chunk_id=document_id * 10 + page_from,
         document_id=document_id,
         title=title,
-        source_path=f"docs/manuals/IT_1C/{title}.pdf",
+        source_path=f"its_erp/{title}.pdf",
         page_from=page_from,
         page_to=page_to,
         content=f"текст {title}",

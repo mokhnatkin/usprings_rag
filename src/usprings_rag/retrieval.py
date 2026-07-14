@@ -1,12 +1,17 @@
-"""Семантический поиск по чанкам: вопрос -> эмбеддинг -> top-k по косинусу.
+"""Семантический поиск по чанкам коллекции: вопрос -> эмбеддинг -> top-k по косинусу.
 
 Важно про метрику: pgvector-оператор `<=>` (cosine_distance) возвращает косинусное
 РАССТОЯНИЕ, а порог «белого списка» сформулирован как СХОДСТВО. Пересчитываем здесь
 (`similarity = 1 - distance`), чтобы дальше по коду, в логах и в конфиге все
 говорили на одном языке.
 
-Порог применяем к лучшему совпадению: если оно ниже `SIMILARITY_THRESHOLD` -
-запрос считаем непокрытым базой знаний (вежливый отказ, LLM не вызываем).
+Поиск всегда идёт в границах одной коллекции, и фильтр стоит на `chunks.collection`,
+а не на `documents`: с HNSW фильтр применяется после обхода индекса, поэтому по
+джойну соседние базы всё равно съедали бы top-k. Условие на секционированной
+колонке отсекает чужие секции до входа в индекс (см. миграцию 0003).
+
+Порог применяем к лучшему совпадению: если оно ниже порога коллекции - запрос
+считаем непокрытым базой знаний (вежливый отказ, LLM не вызываем).
 """
 
 import logging
@@ -15,6 +20,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .collection import Collection
 from .config import settings
 from .embeddings import EmbeddingProvider
 from .models import Chunk, Document
@@ -74,12 +80,13 @@ def search(
     session: Session,
     provider: EmbeddingProvider,
     query: str,
+    collection: Collection,
     top_k: int | None = None,
     threshold: float | None = None,
 ) -> SearchResult:
-    """Найти top-k чанков, ближайших к вопросу, и пометить их относительно порога."""
+    """Найти top-k чанков коллекции и пометить их относительно её порога."""
     top_k = top_k if top_k is not None else settings.top_k
-    threshold = threshold if threshold is not None else settings.similarity_threshold
+    threshold = threshold if threshold is not None else collection.threshold
 
     vector = provider.embed_query(query)
     distance = Chunk.embedding.cosine_distance(vector).label("distance")
@@ -87,6 +94,7 @@ def search(
     rows = session.execute(
         select(Chunk, Document, distance)
         .join(Document, Chunk.document_id == Document.id)
+        .where(Chunk.collection == collection.code)
         .order_by(distance)
         .limit(top_k)
     ).all()
@@ -108,7 +116,9 @@ def search(
 
     result = SearchResult(query=query, hits=hits, threshold=threshold)
     logger.info(
-        "search query=%r candidates=%d best_similarity=%.4f threshold=%.2f verdict=%s",
+        "search collection=%s query=%r candidates=%d best_similarity=%.4f "
+        "threshold=%.2f verdict=%s",
+        collection.code,
         query[:80],
         len(hits),
         result.best_similarity,

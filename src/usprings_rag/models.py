@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, Index, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Sequence, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 EMBEDDING_DIM = 1024
@@ -17,7 +17,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    collection: Mapped[str] = mapped_column(Text, server_default="it_1c")
+    collection: Mapped[str] = mapped_column(Text)
     title: Mapped[str] = mapped_column(Text)
     source_path: Mapped[str] = mapped_column(Text)
     content_hash: Mapped[str] = mapped_column(Text)
@@ -35,9 +35,19 @@ class Document(Base):
 
 
 class Chunk(Base):
+    """Чанк документа. Таблица секционирована по `collection` (PARTITION BY LIST).
+
+    `collection` денормализована из документа: фильтр обязан стоять на той же
+    таблице, где вектор, иначе HNSW-индекс отработает до фильтра (см. миграцию
+    0003). Ключ секционирования обязан входить в PK - отсюда составной ключ.
+    """
+
     __tablename__ = "chunks"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(
+        Integer, Sequence("chunks_id_seq"), primary_key=True, autoincrement=True
+    )
+    collection: Mapped[str] = mapped_column(Text, primary_key=True)
     document_id: Mapped[int] = mapped_column(
         ForeignKey("documents.id", ondelete="CASCADE")
     )
@@ -57,4 +67,5 @@ class Chunk(Base):
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        {"postgresql_partition_by": "LIST (collection)"},
     )

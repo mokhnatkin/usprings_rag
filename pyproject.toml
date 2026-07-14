@@ -28,6 +28,12 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/usprings_rag"]
 
+[tool.pytest.ini_options]
+# Только tests/: в docs/1C_parsing лежат скрипты парсинга (its_parse_test.py и
+# другие), они подходят под шаблон pytest, но тестами не являются и живут на
+# отдельных зависимостях (uv run --with requests ...).
+testpaths = ["tests"]
+
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
