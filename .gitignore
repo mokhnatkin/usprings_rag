@@ -36,3 +36,4 @@ docs/1C_parsing/work/
 
 # Полный корпус PDF из парсинга ИТС (гигабайты, пересобирается its_parse_all.py)
 docs/manuals/parsed/*.pdf
+docs/1C_parsing/parse_all.log
