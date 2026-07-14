@@ -1,7 +1,7 @@
 """Точечные проверки чанкера: упаковка абзацев, перекрытие, деление длинных,
 привязка к страницам."""
 
-from usprings_rag.ingest.chunker import CHARS_PER_TOKEN, chunk_pages
+from usprings_rag.ingest.chunker import CHARS_PER_TOKEN, chunk_pages, estimate_tokens
 from usprings_rag.ingest.pdf import Page
 
 
@@ -29,11 +29,45 @@ def test_packs_until_limit_then_splits():
 
 
 def test_overlap_carries_tail_into_next_chunk():
-    text = f"{_para(300, 'A. ')}\n\n{_para(300, 'B. ')}"
-    with_overlap = chunk_pages([Page(1, text)], max_tokens=400, overlap=350)
-    # Второй чанк начинается с хвоста первого (абзац A переносится по перекрытию).
-    assert len(with_overlap) == 2
-    assert "A." in with_overlap[1].content
+    text = f"{_para(200, 'A. ')}\n\n{_para(200, 'B. ')}\n\n{_para(200, 'C. ')}"
+    chunks = chunk_pages([Page(1, text)], max_tokens=512, overlap=64)
+    # Второй чанк начинается с хвоста первого - иначе шаг инструкции рвётся.
+    assert len(chunks) == 2
+    assert chunks[1].content[:50] in chunks[0].content
+
+
+def test_overlap_never_exceeds_budget_on_huge_paragraphs():
+    """Абзац много больше overlap не должен переноситься целиком (баг до 2026-07-14).
+
+    В PDF из ИТС абзацы идут на сотни токенов; прежний чанкер переносил такой
+    абзац целиком, и перекрытие доходило до 460 токенов вместо 64 - половина
+    корпуса дублировалась.
+    """
+    sentences = " ".join(f"Предложение номер {i} про учёт." for i in range(300))
+    chunks = chunk_pages([Page(1, sentences)], max_tokens=512, overlap=64)
+
+    assert len(chunks) > 1
+    for previous, following in zip(chunks, chunks[1:]):
+        shared = _shared_text(previous.content, following.content)
+        assert estimate_tokens(shared) <= 64 + 5  # +допуск на округление оценки
+
+
+def test_chunk_never_exceeds_max_tokens():
+    """Потолок обязан соблюдаться: до фиксa средний чанк был 614-644 при потолке 512."""
+    text = "\n\n".join(
+        " ".join(f"Абзац {n}, предложение {i}." for i in range(60)) for n in range(10)
+    )
+    for chunk in chunk_pages([Page(1, text)], max_tokens=512, overlap=64):
+        assert estimate_tokens(chunk.content) <= 512
+
+
+def _shared_text(previous: str, following: str) -> str:
+    """Самый длинный префикс following, являющийся суффиксом previous."""
+    limit = min(len(previous), len(following))
+    for size in range(limit, 0, -1):
+        if previous.endswith(following[:size]):
+            return following[:size]
+    return ""
 
 
 def test_oversized_paragraph_is_split():
