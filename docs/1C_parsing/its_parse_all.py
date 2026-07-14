@@ -205,6 +205,23 @@ def build_pdf(doc_dir: Path, stem: str) -> Path:
     return pdf
 
 
+def keep_awake(on: bool) -> None:
+    """Запрещает Windows усыплять систему на время прогона (SetThreadExecutionState).
+
+    Без этого ноутбук уходит в сон по бездействию и процесс замирает вместе с ним.
+    Флаг действует, пока процесс жив; при выходе система возвращается к обычному
+    режиму сама. На не-Windows - ничего не делает.
+    """
+    if sys.platform != "win32":
+        return
+    import ctypes
+
+    ES_CONTINUOUS = 0x80000000
+    ES_SYSTEM_REQUIRED = 0x00000001
+    state = ES_CONTINUOUS | ES_SYSTEM_REQUIRED if on else ES_CONTINUOUS
+    ctypes.windll.kernel32.SetThreadExecutionState(state)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Пакетный парсинг ИТС по registry.md")
     parser.add_argument("--limit", type=int, default=0,
@@ -213,6 +230,7 @@ def main() -> None:
                         help="остановиться после N новых PDF (дубли не считаются; 0 - все)")
     args = parser.parse_args()
 
+    keep_awake(True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     header, rows = load_registry()
     pending = [r for r in rows if r["pdf"] != "ok" and r["dl"] != "дубль"]
@@ -254,6 +272,7 @@ def main() -> None:
         save_registry(header, rows)
         time.sleep(PAUSE)
 
+    keep_awake(False)
     print(f"\n[{now()}] готово: pdf {done}, дублей {dups}, ошибок {errors}")
     if errors:
         print("строки с ошибками остаются в работе - повторный запуск обработает их снова")
