@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Документы - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">← К вопросам</a>
+    <form method="post" action="/logout">
+      <button type="submit">Выйти</button>
+    </form>
+  </div>
+  <main>
+    <h1>Документы коллекции</h1>
+    <p class="subtitle">
+      Загрузка инструкций (PDF), статус индексации и пометка неактуальных.
+      Архивный документ исключается из поиска, но остаётся для аудита; его можно вернуть.
+    </p>
+
+    <label class="field" for="collection">Коллекция</label>
+    <select id="collection"></select>
+
+    <section class="upload">
+      <h2>Загрузить PDF</h2>
+      <form id="upload-form">
+        <input type="file" id="file" name="file" accept="application/pdf" required>
+        <div class="actions">
+          <button type="submit" id="upload-btn">Загрузить и проиндексировать</button>
+        </div>
+      </form>
+      <p id="upload-status" class="meta"></p>
+    </section>
+
+    <section id="jobs-block" class="hidden">
+      <h2>Задачи индексации</h2>
+      <ul id="jobs-list" class="history-list"></ul>
+    </section>
+
+    <section>
+      <h2>Документы</h2>
+      <table id="documents" class="doc-table">
+        <thead>
+          <tr><th>Название</th><th>Статус</th><th>Чанков</th><th>Загружен</th><th></th></tr>
+        </thead>
+        <tbody id="documents-body"></tbody>
+      </table>
+      <p id="documents-empty" class="meta hidden">Пока нет документов.</p>
+    </section>
+  </main>
+
+  <script>
+    const collectionSelect = document.getElementById("collection");
+    const uploadForm = document.getElementById("upload-form");
+    const uploadBtn = document.getElementById("upload-btn");
+    const fileInput = document.getElementById("file");
+    const uploadStatus = document.getElementById("upload-status");
+    const jobsBlock = document.getElementById("jobs-block");
+    const jobsList = document.getElementById("jobs-list");
+    const docsBody = document.getElementById("documents-body");
+    const docsEmpty = document.getElementById("documents-empty");
+
+    const STATUS_RU = {
+      queued: "в очереди", running: "индексируется", done: "готово", error: "ошибка",
+    };
+
+    function selectedCode() {
+      return collectionSelect.value;
+    }
+
+    fetch("/collections")
+      .then((r) => r.json())
+      .then((items) => {
+        for (const item of items) {
+          const option = document.createElement("option");
+          option.value = item.code;
+          option.textContent = item.title;
+          collectionSelect.append(option);
+        }
+        refresh();
+      });
+
+    collectionSelect.addEventListener("change", refresh);
+
+    function refresh() {
+      loadDocuments();
+      loadJobs();
+    }
+
+    function loadDocuments() {
+      fetch(`/api/admin/documents?collection=${encodeURIComponent(selectedCode())}`)
+        .then((r) => r.json())
+        .then((docs) => {
+          docsBody.replaceChildren();
+          docsEmpty.classList.toggle("hidden", docs.length > 0);
+          for (const doc of docs) renderDocRow(doc);
+        });
+    }
+
+    function renderDocRow(doc) {
+      const row = document.createElement("tr");
+      if (doc.archived) row.classList.add("archived");
+
+      const title = document.createElement("td");
+      const link = document.createElement("a");
+      link.href = `/manuals/${doc.source_path}`;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = doc.title;
+      title.append(link);
+
+      const status = document.createElement("td");
+      status.textContent = doc.archived ? "архивный" : "активен";
+
+      const chunks = document.createElement("td");
+      chunks.textContent = doc.chunks;
+
+      const when = document.createElement("td");
+      when.textContent = new Date(doc.created_at).toLocaleString("ru-RU");
+
+      const action = document.createElement("td");
+      const btn = document.createElement("button");
+      btn.className = "secondary";
+      btn.textContent = doc.archived ? "Вернуть" : "В архив";
+      btn.addEventListener("click", () => toggleArchive(doc));
+      action.append(btn);
+
+      row.append(title, status, chunks, when, action);
+      docsBody.append(row);
+    }
+
+    function toggleArchive(doc) {
+      const action = doc.archived ? "unarchive" : "archive";
+      fetch(`/api/admin/documents/${doc.id}/${action}`, { method: "POST" })
+        .then((r) => {
+          if (!r.ok) throw new Error();
+          loadDocuments();
+        })
+        .catch(() => { uploadStatus.textContent = "Не удалось изменить статус документа."; });
+    }
+
+    function loadJobs() {
+      fetch(`/api/admin/jobs?collection=${encodeURIComponent(selectedCode())}`)
+        .then((r) => r.json())
+        .then(renderJobs);
+    }
+
+    function renderJobs(jobs) {
+      jobsBlock.classList.toggle("hidden", jobs.length === 0);
+      jobsList.replaceChildren();
+      for (const job of jobs) {
+        const item = document.createElement("li");
+        const name = job.source_path.split("/").pop();
+        const st = STATUS_RU[job.status] || job.status;
+        item.textContent = `${name} — ${st}`;
+        if (job.status === "error" && job.error) item.textContent += `: ${job.error}`;
+        jobsList.append(item);
+      }
+    }
+
+    uploadForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!fileInput.files.length) return;
+      const data = new FormData();
+      data.append("collection", selectedCode());
+      data.append("file", fileInput.files[0]);
+
+      uploadBtn.disabled = true;
+      uploadStatus.textContent = "Загрузка...";
+      fetch("/api/admin/documents/upload", { method: "POST", body: data })
+        .then((r) => {
+          if (!r.ok) return r.json().then((e) => { throw new Error(e.detail || "Ошибка загрузки"); });
+          return r.json();
+        })
+        .then(() => {
+          uploadBtn.disabled = false;
+          uploadStatus.textContent = "Файл поставлен в очередь на индексацию.";
+          fileInput.value = "";
+          pollUntilSettled();
+        })
+        .catch((err) => {
+          uploadBtn.disabled = false;
+          uploadStatus.textContent = err.message;
+        });
+    });
+
+    // После загрузки опрашиваем статус, пока задачи в работе, затем обновляем список.
+    let pollTimer = null;
+    function pollUntilSettled() {
+      if (pollTimer) clearInterval(pollTimer);
+      let ticks = 0;
+      pollTimer = setInterval(() => {
+        ticks += 1;
+        fetch(`/api/admin/jobs?collection=${encodeURIComponent(selectedCode())}`)
+          .then((r) => r.json())
+          .then((jobs) => {
+            renderJobs(jobs);
+            const active = jobs.some((j) => j.status === "queued" || j.status === "running");
+            if (!active || ticks > 60) {
+              clearInterval(pollTimer);
+              pollTimer = null;
+              loadDocuments();
+            }
+          });
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

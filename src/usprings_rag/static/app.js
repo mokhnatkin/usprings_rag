@@ -32,6 +32,16 @@ fetch("/collections")
     }
   });
 
+// Ссылка «Документы» - только администраторам (роль узнаём с сервера; экран всё
+// равно закрыт 403, ссылка лишь не мозолит глаза обычному пользователю).
+fetch("/api/me")
+  .then((response) => response.json())
+  .then((me) => {
+    if (me.role === "collection_admin" || me.role === "super_admin") {
+      document.getElementById("nav-documents").classList.remove("hidden");
+    }
+  });
+
 const recentBlock = document.getElementById("recent");
 const recentList = document.getElementById("recent-list");
 

@@ -18,7 +18,7 @@ from datetime import datetime
 from math import ceil
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from openai import RateLimitError
@@ -41,10 +41,14 @@ from .collection import DEFAULT_COLLECTION, Collection, get_collection, list_col
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
+from .admin import documents as admin_docs
 from .history import get_owned, paginate, recent
+from .indexing import jobs as index_jobs
+from .indexing.worker import IndexWorker
+from .ingest.pipeline import relative_source_path
 from .llm import create_client
 from .logging_qa import log_query, set_feedback
-from .models import User
+from .models import Role, User
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +59,7 @@ resources: dict = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Bootstrap super-admin, прогрев модели эмбеддингов и клиент LLM до запросов."""
+    """Bootstrap super-admin, прогрев модели эмбеддингов, клиент LLM и воркер индексации."""
     with SessionLocal() as session:
         bootstrap_super_admin(session)
     logger.info("Загрузка модели эмбеддингов...")
@@ -63,8 +67,15 @@ async def lifespan(app: FastAPI):
     provider.embed_query("прогрев")
     resources["provider"] = provider
     resources["client"] = create_client()  # валидирует OPENROUTER_API_KEY
+    worker = None
+    if settings.index_worker_enabled:
+        worker = IndexWorker(provider)  # переиспользует уже прогретую модель
+        worker.start()
+        resources["worker"] = worker
     logger.info("Приложение готово")
     yield
+    if worker is not None:
+        worker.stop()
     resources.clear()
 
 
@@ -311,12 +322,138 @@ def collections(user: User = Depends(get_current_user)) -> list[CollectionOut]:
     ]
 
 
+class MeOut(BaseModel):
+    login: str
+    full_name: str
+    role: str
+
+
+@app.get("/api/me", response_model=MeOut)
+def me(user: User = Depends(get_current_user)) -> MeOut:
+    """Текущий пользователь - для навигации по роли на клиенте."""
+    return MeOut(login=user.login, full_name=user.full_name, role=user.role)
+
+
 def _resolve_collection(code: str) -> Collection:
     """Коллекция по коду или 422: неизвестная коллекция не уходит в молчаливый поиск."""
     try:
         return get_collection(code)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+# --- Админка: документы (collection_admin, super_admin) ---
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    """Зависимость: только администратор коллекций или super_admin, иначе 403."""
+    if user.role not in (Role.COLLECTION_ADMIN, Role.SUPER_ADMIN):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    return user
+
+
+class DocumentOut(BaseModel):
+    id: int
+    collection: str
+    title: str
+    source_path: str
+    created_at: datetime
+    archived: bool
+    chunks: int
+
+
+class JobOut(BaseModel):
+    id: int
+    collection: str
+    source_path: str
+    status: str
+    error: str | None
+    created_at: datetime
+    finished_at: datetime | None
+
+
+@app.get("/admin/documents")
+def admin_documents_page(user: User = Depends(require_admin)) -> FileResponse:
+    """Экран управления документами (загрузка, статус индексации, архивация)."""
+    return FileResponse(PACKAGE_DIR / "templates" / "admin" / "documents.html")
+
+
+@app.get("/api/admin/documents", response_model=list[DocumentOut])
+def admin_documents_list(
+    collection: str | None = None, user: User = Depends(require_admin)
+) -> list[DocumentOut]:
+    """Документы доступных админу коллекций (опционально - одной)."""
+    with SessionLocal() as session:
+        codes = accessible_codes(session, user)
+        if collection is not None:
+            codes = codes & {collection}
+        items = admin_docs.list_documents(session, codes)
+    return [DocumentOut(**vars(item)) for item in items]
+
+
+@app.get("/api/admin/jobs", response_model=list[JobOut])
+def admin_jobs_list(
+    collection: str | None = None, user: User = Depends(require_admin)
+) -> list[JobOut]:
+    """Последние задачи индексации по доступным админу коллекциям (для опроса статуса)."""
+    with SessionLocal() as session:
+        codes = accessible_codes(session, user)
+        if collection is not None:
+            codes = codes & {collection}
+        items = admin_docs.recent_jobs(session, codes)
+    return [JobOut(**vars(item)) for item in items]
+
+
+@app.post("/api/admin/documents/upload")
+async def admin_documents_upload(
+    collection: str = Form(...),
+    file: UploadFile = File(...),
+    user: User = Depends(require_admin),
+) -> dict:
+    """Загрузить PDF в коллекцию и поставить задачу индексации. Возвращает job_id."""
+    selected = _resolve_collection(collection)
+    name = Path(file.filename or "").name
+    if not name.lower().endswith(".pdf"):
+        raise HTTPException(status_code=422, detail="Допустимы только файлы PDF")
+    with SessionLocal() as session:
+        check_collection_access(session, user, selected.code, need_admin=True)
+        dest_dir = Path(settings.manuals_dir) / selected.folder
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / name
+        dest.write_bytes(await file.read())
+        job_id = index_jobs.enqueue(
+            session, selected.id, relative_source_path(dest), user.id
+        )
+    return {"job_id": job_id}
+
+
+def _set_document_archived(
+    doc_id: int, archived: bool, user: User
+) -> None:
+    with SessionLocal() as session:
+        code = admin_docs.collection_of(session, doc_id)
+        if code is None:
+            raise HTTPException(status_code=404, detail="Документ не найден")
+        check_collection_access(session, user, code, need_admin=True)
+        admin_docs.set_archived(session, doc_id, archived, user.id)
+
+
+@app.post("/api/admin/documents/{doc_id}/archive")
+def admin_document_archive(
+    doc_id: int, user: User = Depends(require_admin)
+) -> dict:
+    """Пометить документ неактуальным (исключить из поиска)."""
+    _set_document_archived(doc_id, True, user)
+    return {"ok": True}
+
+
+@app.post("/api/admin/documents/{doc_id}/unarchive")
+def admin_document_unarchive(
+    doc_id: int, user: User = Depends(require_admin)
+) -> dict:
+    """Вернуть документ из архива (снова в поиске, переиндексация не нужна)."""
+    _set_document_archived(doc_id, False, user)
+    return {"ok": True}
 
 
 class AskRequest(BaseModel):

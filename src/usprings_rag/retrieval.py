@@ -94,7 +94,10 @@ def search(
     rows = session.execute(
         select(Chunk, Document, distance)
         .join(Document, Chunk.document_id == Document.id)
-        .where(Chunk.collection == collection.code)
+        .where(
+            Chunk.collection == collection.code,
+            Document.archived_at.is_(None),  # архивные документы вне выдачи
+        )
         .order_by(distance)
         .limit(top_k)
     ).all()

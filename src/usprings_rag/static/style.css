@@ -209,4 +209,34 @@ h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
 
 .pager button { padding: 0.4rem 1rem; font-size: 0.85rem; }
 
+/* Админка: загрузка и таблица документов. */
+.upload { margin-top: 1rem; }
+
+.upload input[type="file"] { margin-bottom: 0.5rem; }
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.doc-table th,
+.doc-table td {
+  text-align: left;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.doc-table th { color: var(--muted); font-weight: 600; }
+
+.doc-table a { color: var(--accent); text-decoration: none; }
+
+.doc-table a:hover { text-decoration: underline; }
+
+.doc-table button { padding: 0.35rem 0.9rem; font-size: 0.8rem; }
+
+/* Архивный документ приглушён - виден в списке, но помечен как неактуальный. */
+.doc-table tr.archived td { color: var(--muted); }
+
 .hidden { display: none; }
