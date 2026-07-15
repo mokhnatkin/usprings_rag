@@ -46,13 +46,20 @@ class Source:
 
 @dataclass
 class Answer:
-    """Результат сценария: текст, признак отказа, источники, диагностика."""
+    """Результат сценария: текст, признак отказа, источники, диагностика.
+
+    Поля usage/model нужны логированию (query_log). У отказа - нули и пустая
+    модель: LLM не вызывали.
+    """
 
     text: str
     refused: bool
     sources: list[Source]
     best_similarity: float
     elapsed_seconds: float
+    model_id: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
 
 def _collect_sources(hits) -> list[Source]:
@@ -118,8 +125,9 @@ def stream_answer(
     hits = result.relevant
     buffer = ""
     holding = True
+    usage: dict = {}  # заполнится расходом токенов из финального чанка
 
-    for delta in stream_generate(client, question, hits, model=model):
+    for delta in stream_generate(client, question, hits, model=model, usage=usage):
         if not holding:
             yield "delta", delta
             continue
@@ -162,6 +170,9 @@ def stream_answer(
             sources=_collect_sources(hits),
             best_similarity=result.best_similarity,
             elapsed_seconds=elapsed,
+            model_id=usage.get("model", ""),
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
         ),
     )
 
@@ -222,4 +233,7 @@ def answer_question(
         sources=_collect_sources(hits),
         best_similarity=result.best_similarity,
         elapsed_seconds=elapsed,
+        model_id=response.model,
+        prompt_tokens=response.prompt_tokens,
+        completion_tokens=response.completion_tokens,
     )

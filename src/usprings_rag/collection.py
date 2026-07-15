@@ -38,6 +38,7 @@ class Collection:
     folder: str  # папка с PDF относительно settings.manuals_dir
     threshold: float  # порог сходства - свой у каждой коллекции
     is_active: bool = True
+    id: int | None = None  # id строки collections; None у сконструированных вручную
 
 
 DEFAULT_COLLECTION = CollectionCode.ERP  # основная база пилота
@@ -59,6 +60,7 @@ def _load() -> dict[str, Collection]:
             folder=row.folder,
             threshold=row.threshold,
             is_active=row.is_active,
+            id=row.id,
         )
         for row in rows
     }

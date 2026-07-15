@@ -15,6 +15,7 @@ from sqlalchemy import (
     Text,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 EMBEDDING_DIM = 1024
@@ -66,6 +67,42 @@ class UserCollectionAccess(Base):
     )
     collection_id: Mapped[int] = mapped_column(
         ForeignKey("collections.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class QueryLog(Base):
+    """Журнал вопросов-ответов: привязка к пользователю и коллекции, полный текст,
+    расход токенов, диагностика (лучшее сходство, найденные документы, модель) и
+    обратная связь. Полный текст - для истории и переиспользования жалоб в eval;
+    усечение для списков - на стороне выборки (QUERY_LOG_PREVIEW_CHARS)."""
+
+    __tablename__ = "query_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    outcome: Mapped[str] = mapped_column(Text)  # answered | refused
+    best_similarity: Mapped[float] = mapped_column(Float)
+    prompt_tokens: Mapped[int] = mapped_column(Integer)
+    completion_tokens: Mapped[int] = mapped_column(Integer)
+    total_tokens: Mapped[int] = mapped_column(Integer)
+    elapsed_seconds: Mapped[float] = mapped_column(Float)
+    model_id: Mapped[str] = mapped_column(Text)
+    sources: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    feedback: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    feedback_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    feedback_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("query_log_user_created_idx", "user_id", "created_at"),
+        Index("query_log_collection_created_idx", "collection_id", "created_at"),
     )
 
 

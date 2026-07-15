@@ -40,6 +40,7 @@ from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
 from .llm import create_client
+from .logging_qa import log_query
 from .models import User
 
 logger = logging.getLogger(__name__)
@@ -221,6 +222,7 @@ def ask(request: AskRequest, user: User = Depends(get_current_user)) -> AskRespo
                     "Повторите вопрос через минуту."
                 ),
             )
+        log_query(session, user.id, collection, request.question, result)
     return AskResponse(
         answer=result.text,
         refused=result.refused,
@@ -256,6 +258,7 @@ def ask_stream(
         check_collection_access(session, user, selected.code)
 
     def events() -> Iterator[str]:
+        parts: list[str] = []  # накопленный текст ответа - для записи в лог
         with SessionLocal() as session:
             try:
                 for kind, payload in stream_answer(
@@ -266,6 +269,7 @@ def ask_stream(
                     selected,
                 ):
                     if kind == "delta":
+                        parts.append(payload)
                         yield _sse({"type": "delta", "text": payload})
                     else:
                         yield _sse(
@@ -278,6 +282,13 @@ def ask_stream(
                                 "best_similarity": round(payload.best_similarity, 4),
                                 "elapsed_seconds": round(payload.elapsed_seconds, 2),
                             }
+                        )
+                        # текст ответа при стриме ушёл дельтами (payload.text пуст),
+                        # для лога собираем его из накопленных кусков; у отказа -
+                        # payload.text (дельт не было).
+                        full = "".join(parts) if parts else payload.text
+                        log_query(
+                            session, user.id, selected, question, payload, answer_text=full
                         )
             except RateLimitError:
                 logger.warning("LLM rate limit (429) - бесплатный тир OpenRouter занят")

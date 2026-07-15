@@ -67,3 +67,21 @@ def test_below_threshold_refuses_without_calling_llm(monkeypatch):
     events = list(stream_answer(None, None, None, "погода", ERP))
     assert [kind for kind, _ in events] == ["done"]
     assert events[0][1].refused
+
+
+def test_done_answer_carries_usage_from_stream(monkeypatch):
+    # stream_generate заполняет usage-словарь расходом токенов - он должен доехать
+    # до итогового Answer (для записи в query_log).
+    monkeypatch.setattr(answer_module, "search", lambda *a, **k: make_result(0.74))
+
+    def fake_stream(client, question, hits, model=None, usage=None):
+        if usage is not None:
+            usage.update({"model": "m", "prompt_tokens": 10, "completion_tokens": 5})
+        return iter(["Ответ ", "готов."])
+
+    monkeypatch.setattr(answer_module, "stream_generate", fake_stream)
+    events = list(stream_answer(None, None, None, "вопрос", ERP))
+    done = next(payload for kind, payload in events if kind == "done")
+    assert done.model_id == "m"
+    assert done.prompt_tokens == 10
+    assert done.completion_tokens == 5

@@ -58,4 +58,5 @@ def create_collection(
         folder=row.folder,
         threshold=row.threshold,
         is_active=row.is_active,
+        id=row.id,
     )

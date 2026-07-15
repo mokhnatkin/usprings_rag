@@ -105,12 +105,17 @@ def generate(
 
 
 def stream_generate(
-    client: OpenAI, question: str, hits: list[SearchHit], model: str | None = None
+    client: OpenAI,
+    question: str,
+    hits: list[SearchHit],
+    model: str | None = None,
+    usage: dict | None = None,
 ) -> Iterator[str]:
     """Сгенерировать ответ по частям (для показа текста по мере генерации).
 
     `include_usage` заставляет OpenRouter прислать последним чанком расход токенов -
-    у него пустой `choices`, поэтому проверяем наличие дельты перед выдачей.
+    у него пустой `choices`, поэтому проверяем наличие дельты перед выдачей. Если
+    передан `usage`, расход и модель кладём туда - для логирования (query_log).
     """
     model = model or settings.openrouter_model
     stream = client.chat.completions.create(
@@ -133,5 +138,9 @@ def stream_generate(
                 chunk.usage.prompt_tokens,
                 chunk.usage.completion_tokens,
             )
+            if usage is not None:
+                usage["model"] = chunk.model
+                usage["prompt_tokens"] = chunk.usage.prompt_tokens
+                usage["completion_tokens"] = chunk.usage.completion_tokens
         if chunk.choices and chunk.choices[0].delta.content:
             yield chunk.choices[0].delta.content
