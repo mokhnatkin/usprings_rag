@@ -6,10 +6,11 @@
 
 from usprings_rag import answer as answer_module
 from usprings_rag.answer import refusal_text, stream_answer
-from usprings_rag.collection import CollectionCode, get_collection
+from usprings_rag.collection import Collection
 from usprings_rag.retrieval import SearchHit, SearchResult
 
-ERP = get_collection(CollectionCode.ERP)
+# Логический тест: коллекцию конструируем как значение, без обращения к БД-справочнику.
+ERP = Collection(code="erp", title="1С:ERP", folder="its_erp", threshold=0.58)
 
 
 def make_result(similarity: float) -> SearchResult:

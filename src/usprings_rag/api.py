@@ -11,22 +11,33 @@
 
 import json
 import logging
+import secrets
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from openai import RateLimitError
 from pydantic import BaseModel
+from starlette.middleware.sessions import SessionMiddleware
 
 from .answer import answer_question, stream_answer
-from .collection import COLLECTIONS, DEFAULT_COLLECTION, CollectionCode, get_collection
+from .auth import (
+    authenticate,
+    bootstrap_super_admin,
+    current_user_or_none,
+    get_current_user,
+    login_user,
+    logout_user,
+)
+from .collection import DEFAULT_COLLECTION, Collection, get_collection, list_collections
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
 from .llm import create_client
+from .models import User
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +48,9 @@ resources: dict = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Прогрев модели эмбеддингов и создание клиента LLM до первого запроса."""
+    """Bootstrap super-admin, прогрев модели эмбеддингов и клиент LLM до запросов."""
+    with SessionLocal() as session:
+        bootstrap_super_admin(session)
     logger.info("Загрузка модели эмбеддингов...")
     provider = BGEEmbeddingProvider()
     provider.embed_query("прогрев")
@@ -50,6 +63,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="USprings RAG", lifespan=lifespan)
 
+# Подпись cookie-сессии. Пустой SECRET_KEY - dev-режим: эфемерный ключ, перезапуск
+# разлогинит всех. На проде задать SECRET_KEY в .env.
+_secret = settings.secret_key
+if not _secret:
+    logger.warning("SECRET_KEY не задан - генерирую эфемерный (сессии не переживут рестарт)")
+    _secret = secrets.token_urlsafe(32)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_secret,
+    session_cookie=settings.session_cookie_name,
+    max_age=settings.session_max_age,
+    same_site="lax",
+    https_only=False,  # on-premise может работать по http; за TLS включить True
+)
+
 app.mount("/static", StaticFiles(directory=PACKAGE_DIR / "static"), name="static")
 # Исходные PDF: html=False, чтобы отдавались только файлы, без листинга папок.
 app.mount(
@@ -60,9 +88,41 @@ app.mount(
 
 
 @app.get("/")
-def index() -> FileResponse:
-    """Экран вопрос-ответ."""
+def index(request: Request):
+    """Экран вопрос-ответ. Аноним - на форму входа."""
+    if current_user_or_none(request) is None:
+        return RedirectResponse("/login", status_code=303)
     return FileResponse(PACKAGE_DIR / "templates" / "index.html")
+
+
+@app.get("/login")
+def login_page(request: Request):
+    """Форма входа. Уже авторизованного - на портал."""
+    if current_user_or_none(request) is not None:
+        return RedirectResponse("/", status_code=303)
+    return FileResponse(PACKAGE_DIR / "templates" / "login.html")
+
+
+@app.post("/login")
+def login_submit(
+    request: Request,
+    login: str = Form(...),
+    password: str = Form(...),
+):
+    """Проверить учётные данные и открыть сессию."""
+    with SessionLocal() as session:
+        user = authenticate(session, login, password)
+    if user is None:
+        return RedirectResponse("/login?error=1", status_code=303)
+    login_user(request, user)
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/logout")
+def logout(request: Request):
+    """Завершить сессию."""
+    logout_user(request)
+    return RedirectResponse("/login", status_code=303)
 
 
 class CollectionOut(BaseModel):
@@ -71,19 +131,28 @@ class CollectionOut(BaseModel):
 
 
 @app.get("/collections", response_model=list[CollectionOut])
-def list_collections() -> list[CollectionOut]:
-    """Коллекции для селектора в UI - из того же справочника, что и поиск."""
+def collections(user: User = Depends(get_current_user)) -> list[CollectionOut]:
+    """Коллекции для селектора в UI - из того же справочника, что и поиск.
+
+    В этапе 3 (RBAC) список будет фильтроваться по доступу пользователя.
+    """
     return [
         CollectionOut(code=item.code, title=item.title)
-        for item in COLLECTIONS.values()
+        for item in list_collections()
     ]
+
+
+def _resolve_collection(code: str) -> Collection:
+    """Коллекция по коду или 422: неизвестная коллекция не уходит в молчаливый поиск."""
+    try:
+        return get_collection(code)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 class AskRequest(BaseModel):
     question: str
-    # Тип-enum: неизвестная коллекция отсекается валидацией (422), а не уходит
-    # в молчаливый поиск по всей базе.
-    collection: CollectionCode = DEFAULT_COLLECTION
+    collection: str = DEFAULT_COLLECTION
 
 
 class SourceOut(BaseModel):
@@ -103,13 +172,13 @@ class AskResponse(BaseModel):
 
 
 @app.post("/ask", response_model=AskResponse)
-def ask(request: AskRequest) -> AskResponse:
+def ask(request: AskRequest, user: User = Depends(get_current_user)) -> AskResponse:
     """Вопрос -> поиск по коллекции -> порог -> (отказ | ответ LLM) + источники.
 
     Лимит бесплатного тира OpenRouter (429) - воспроизводимая ситуация пилота,
     отдаём её отдельным понятным статусом, а не общей ошибкой 500.
     """
-    collection = get_collection(request.collection)
+    collection = _resolve_collection(request.collection)
     with SessionLocal() as session:
         try:
             result = answer_question(
@@ -145,7 +214,9 @@ def _sse(event: dict) -> str:
 
 @app.get("/ask/stream")
 def ask_stream(
-    question: str, collection: CollectionCode = DEFAULT_COLLECTION
+    question: str,
+    collection: str = DEFAULT_COLLECTION,
+    user: User = Depends(get_current_user),
 ) -> StreamingResponse:
     """То же, что /ask, но ответ идёт по мере генерации (SSE).
 
@@ -155,7 +226,7 @@ def ask_stream(
 
     GET (а не POST) - чтобы на клиенте работал штатный EventSource.
     """
-    selected = get_collection(collection)
+    selected = _resolve_collection(collection)
 
     def events() -> Iterator[str]:
         with SessionLocal() as session:

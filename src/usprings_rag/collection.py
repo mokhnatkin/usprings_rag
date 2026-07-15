@@ -1,19 +1,29 @@
 """Коллекции - базы знаний по продуктам (1С:ERP, 1С:ЗУП).
 
-Единый справочник: код в БД, название для UI, папка инструкций и порог сходства.
+Справочник живёт в таблице `collections` (см. модель `CollectionRow`). Этот модуль -
+тонкая read-model поверх неё: тот же объект `Collection` с полями
+`code`/`title`/`folder`/`threshold`, что и раньше, чтобы поиск, генерация и ingest
+не меняли сигнатур. Справочник кэшируется в памяти; правки из админки сбрасывают
+кэш через `invalidate_cache()`.
+
 Пользователь выбирает коллекцию до вопроса, поиск идёт только по ней (чанки
 секционированы по коллекции - см. docs/MVP/MVP0/backlog.md).
 
-На MVP0 справочник - enum в коде; таблица коллекций с админкой - пост-MVP.
 Модуль назван в единственном числе, чтобы не затенять stdlib `collections`.
 """
 
 from dataclasses import dataclass
 from enum import StrEnum
 
+from sqlalchemy import select
+
+from .db import SessionLocal
+from .models import CollectionRow
+
 
 class CollectionCode(StrEnum):
-    """Код коллекции - значение в БД и в API."""
+    """Известные коды коллекций. Не источник истины (им стала таблица), но удобны
+    как константы для сида миграции, значения по умолчанию и валидации."""
 
     ERP = "erp"
     ZUP = "zup"
@@ -23,48 +33,62 @@ class CollectionCode(StrEnum):
 class Collection:
     """Свойства коллекции: как называется, откуда грузится, каким порогом отсекается."""
 
-    code: CollectionCode
+    code: str  # код в БД и в API
     title: str  # для UI и текстов ответа
     folder: str  # папка с PDF относительно settings.manuals_dir
     threshold: float  # порог сходства - свой у каждой коллекции
+    is_active: bool = True
 
-
-# Пороги откалиброваны 2026-07-14 на eval-наборах корпуса ИТС, после исправления
-# чанкера (прежние 0.53 и 0.55 получены на другом составе чанков и недействительны).
-# Порог ставится НИЖЕ минимума релевантных с запасом: ложный отказ дороже ложного
-# пропуска - непокрытый вопрос, прошедший порог, ловит промпт («в инструкциях этого
-# нет»), а отказ на легитимном вопросе ничем не компенсируется. Процедура -
-# docs/maintenance.md, раздел 4.
-COLLECTIONS: dict[CollectionCode, Collection] = {
-    CollectionCode.ERP: Collection(
-        code=CollectionCode.ERP,
-        title="1С:ERP",
-        folder="its_erp",
-        # 16 вопросов: релевантные от 0.6155, нерелевантные до 0.6094. Разделение
-        # чистое, но зазор 0.006 - это не запас, а совпадение: порог по середине
-        # зазора отказывал бы законным вопросам чуть иной формулировки. 0.58 держит
-        # все релевантные с запасом 0.035 и режет вне-доменные (до 0.41).
-        threshold=0.58,
-    ),
-    CollectionCode.ZUP: Collection(
-        code=CollectionCode.ZUP,
-        title="1С:ЗУП",
-        folder="its_zup",
-        # 18 вопросов: релевантные от 0.5857, нерелевантные до 0.5166, кроме одного
-        # околодоменного («сколько стоит лицензия ЗУП» - 0.6324, лексика почти как у
-        # корпуса). 0.55 держит все релевантные и режет чужие темы, включая вопрос
-        # из соседней коллекции (отгрузка со склада - 0.5166).
-        threshold=0.55,
-    ),
-}
 
 DEFAULT_COLLECTION = CollectionCode.ERP  # основная база пилота
 
 
+# Кэш справочника: код -> Collection. Загружается лениво из БД, сбрасывается при
+# правках из админки. На пилотном масштабе коллекций единицы - держать в памяти дёшево.
+_cache: dict[str, Collection] | None = None
+
+
+def _load() -> dict[str, Collection]:
+    """Прочитать весь справочник из БД (включая неактивные)."""
+    with SessionLocal() as session:
+        rows = session.scalars(select(CollectionRow)).all()
+    return {
+        row.code: Collection(
+            code=row.code,
+            title=row.title,
+            folder=row.folder,
+            threshold=row.threshold,
+            is_active=row.is_active,
+        )
+        for row in rows
+    }
+
+
+def _ensure_loaded() -> dict[str, Collection]:
+    global _cache
+    if _cache is None:
+        _cache = _load()
+    return _cache
+
+
+def invalidate_cache() -> None:
+    """Сбросить кэш - вызывать после правки справочника (создание/изменение)."""
+    global _cache
+    _cache = None
+
+
 def get_collection(code: str) -> Collection:
     """Коллекция по коду. Неизвестный код - ValueError (в API превращается в 422)."""
-    try:
-        return COLLECTIONS[CollectionCode(code)]
-    except ValueError:
-        known = ", ".join(COLLECTIONS)
-        raise ValueError(f"неизвестная коллекция: {code} (известны: {known})") from None
+    collections = _ensure_loaded()
+    collection = collections.get(str(code))
+    if collection is None:
+        known = ", ".join(sorted(collections)) or "нет коллекций"
+        raise ValueError(f"неизвестная коллекция: {code} (известны: {known})")
+    return collection
+
+
+def list_collections(active_only: bool = True) -> list[Collection]:
+    """Все коллекции справочника, по коду. `active_only` скрывает деактивированные."""
+    collections = _ensure_loaded().values()
+    items = [c for c in collections if c.is_active or not active_only]
+    return sorted(items, key=lambda c: c.code)

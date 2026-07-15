@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вход - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <h1>Вход</h1>
+    <p class="subtitle">База знаний УПЗ. Введите логин и пароль.</p>
+
+    <p id="error" class="form-error hidden">Неверный логин или пароль.</p>
+
+    <form method="post" action="/login">
+      <label class="field" for="login">Логин</label>
+      <input type="text" id="login" name="login" autocomplete="username" required autofocus>
+
+      <label class="field" for="password">Пароль</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+      <div class="actions">
+        <button type="submit">Войти</button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    if (new URLSearchParams(location.search).has("error")) {
+      document.getElementById("error").classList.remove("hidden");
+    }
+  </script>
+</body>
+</html>

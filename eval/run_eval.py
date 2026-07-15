@@ -16,7 +16,7 @@ from pathlib import Path
 
 import yaml
 
-from usprings_rag.collection import COLLECTIONS, get_collection
+from usprings_rag.collection import get_collection
 from usprings_rag.config import settings
 from usprings_rag.db import SessionLocal
 from usprings_rag.embeddings import BGEEmbeddingProvider
@@ -113,7 +113,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Eval поиска по коллекциям")
     parser.add_argument(
         "--collection",
-        choices=[code.value for code in COLLECTIONS],
         help="считать только одну коллекцию (по умолчанию - все, что есть в наборе)",
     )
     args = parser.parse_args()

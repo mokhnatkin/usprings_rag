@@ -35,5 +35,15 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.1
     llm_max_tokens: int = 800
 
+    # Аутентификация и сессии
+    # secret_key подписывает cookie сессии. Пусто - dev-режим: генерируем эфемерный
+    # ключ при старте (перезапуск разлогинит всех). На проде задать явно.
+    secret_key: str = ""
+    session_cookie_name: str = "usprings_session"
+    session_max_age: int = 86400  # сутки
+    # Бутстрап super-admin при первом старте с пустой таблицей users.
+    superadmin_login: str = ""
+    superadmin_password: str = ""
+
 
 settings = Settings()

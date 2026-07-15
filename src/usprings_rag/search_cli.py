@@ -11,7 +11,7 @@
 import argparse
 import logging
 
-from .collection import COLLECTIONS, DEFAULT_COLLECTION, get_collection
+from .collection import DEFAULT_COLLECTION, get_collection
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
@@ -23,9 +23,8 @@ def main() -> None:
     parser.add_argument("query", help="вопрос пользователя")
     parser.add_argument(
         "--collection",
-        choices=[code.value for code in COLLECTIONS],
-        default=DEFAULT_COLLECTION.value,
-        help=f"коллекция (по умолчанию {DEFAULT_COLLECTION.value})",
+        default=str(DEFAULT_COLLECTION),
+        help=f"коллекция (по умолчанию {DEFAULT_COLLECTION})",
     )
     parser.add_argument(
         "--top-k",
@@ -43,7 +42,10 @@ def main() -> None:
         "--full", action="store_true", help="показать текст чанков целиком"
     )
     args = parser.parse_args()
-    collection = get_collection(args.collection)
+    try:
+        collection = get_collection(args.collection)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     # INFO только для своих логгеров: на root он тянет шумные логи httpx/huggingface.
     logging.basicConfig(level=logging.WARNING, format="%(message)s")

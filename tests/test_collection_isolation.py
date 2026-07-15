@@ -13,13 +13,15 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
-from usprings_rag.collection import CollectionCode, get_collection
+from usprings_rag.collection import Collection
 from usprings_rag.db import SessionLocal
 from usprings_rag.models import Chunk, Document
 from usprings_rag.retrieval import search
 
-ERP = get_collection(CollectionCode.ERP)
-ZUP = get_collection(CollectionCode.ZUP)
+# Коллекции - значения-держатели (code/folder); тест про изоляцию секций, не про
+# справочник, поэтому БД-справочник здесь не нужен.
+ERP = Collection(code="erp", title="1С:ERP", folder="its_erp", threshold=0.58)
+ZUP = Collection(code="zup", title="1С:ЗУП", folder="its_zup", threshold=0.55)
 
 VECTOR = [0.1] * 1024
 

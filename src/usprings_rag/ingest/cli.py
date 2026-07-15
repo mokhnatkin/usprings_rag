@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from ..collection import COLLECTIONS, get_collection
+from ..collection import get_collection
 from ..config import settings
 from ..db import SessionLocal
 from ..embeddings import BGEEmbeddingProvider
@@ -77,7 +77,6 @@ def main() -> None:
     parser.add_argument(
         "--collection",
         required=True,
-        choices=[code.value for code in COLLECTIONS],
         help="коллекция (база знаний), в которую грузим документы",
     )
     parser.add_argument(
@@ -94,7 +93,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    collection = get_collection(args.collection)
+    try:
+        collection = get_collection(args.collection)
+    except ValueError as exc:
+        parser.error(str(exc))
     directory = args.directory or Path(settings.manuals_dir) / collection.folder
     if not directory.is_dir():
         print(f"Папка не найдена: {directory}", file=sys.stderr)

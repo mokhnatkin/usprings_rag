@@ -1,9 +1,20 @@
-"""ORM-модели: документы и их чанки с эмбеддингами."""
+"""ORM-модели: пользователи, справочник коллекций, документы и их чанки."""
 
 from datetime import datetime
+from enum import StrEnum
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Sequence, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Sequence,
+    Text,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 EMBEDDING_DIM = 1024
@@ -11,6 +22,55 @@ EMBEDDING_DIM = 1024
 
 class Base(DeclarativeBase):
     pass
+
+
+class Role(StrEnum):
+    """Роль пользователя. Одна на учётку.
+
+    USER - вопросы по доступным коллекциям; COLLECTION_ADMIN - плюс управление
+    своими коллекциями; SUPER_ADMIN - управление порталом (см. MVP1 backlog).
+    """
+
+    USER = "user"
+    COLLECTION_ADMIN = "collection_admin"
+    SUPER_ADMIN = "super_admin"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    login: Mapped[str] = mapped_column(Text, unique=True)
+    full_name: Mapped[str] = mapped_column(Text)
+    email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    password_hash: Mapped[str] = mapped_column(Text)
+    role: Mapped[str] = mapped_column(Text)  # значения - из Role
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class CollectionRow(Base):
+    """Справочник коллекций (баз знаний) - источник истины вместо enum.
+
+    `code` - стабильный строковый идентификатор: им же назван раздел секции
+    `chunks` (`chunks_erp`, ...), поэтому менять его нельзя (см. миграцию 0003 и
+    docs/MVP/MVP1/mvp-dev-plan.md, этап 1). Порог сходства - свойство коллекции,
+    правится super-admin из UI без деплоя.
+    """
+
+    __tablename__ = "collections"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(Text, unique=True)
+    title: Mapped[str] = mapped_column(Text)
+    folder: Mapped[str] = mapped_column(Text)
+    threshold: Mapped[float] = mapped_column(Float)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class Document(Base):
