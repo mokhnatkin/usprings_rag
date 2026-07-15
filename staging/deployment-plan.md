@@ -214,21 +214,22 @@ dev = [
 ### Шаг 1. Прогреть HF-кэш на сервере (иначе первый старт зависнет)
 
 Веса BGE-m3 в образ не кладутся — монтируются из `~/.cache/huggingface` хоста,
-которого на сервере нет. Скопировать модель с dev-машины (кэш уже прогрет локально):
+которого на сервере нет.
+
+**Проверено 2026-07-15: `huggingface.co` доступен с сервера** (`resolve/main/config.json`
+→ 307 на CDN за ~0.4 с). Значит прогрев = **скачивание на самом сервере** уже
+поднятым образом (offload на быстрый линк сервера, без выгрузки с dev-машины):
 
 ```bash
-# на dev-машине (git bash), проверить наличие локально:
-ls ~/.cache/huggingface/hub/models--BAAI--bge-m3
-# создать целевую папку на сервере и скопировать дерево модели (~2.3 ГБ):
-ssh -p 5222 alex@195.239.217.102 'mkdir -p ~/.cache/huggingface/hub'
-scp -P 5222 -r ~/.cache/huggingface/hub/models--BAAI--bge-m3 \
-    alex@195.239.217.102:~/.cache/huggingface/hub/
+docker compose -f docker-compose.staging.yml run --rm app \
+    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
 ```
 
-Альтернатива, если `huggingface.co` доступен с сервера: прогреть уже поднятым
-образом — `docker compose -f docker-compose.staging.yml run --rm app \
-python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"`.
-scp с dev-машины надёжнее (не зависит от сетевых ограничений сервера).
+Модель (~2.3 ГБ) ляжет в смонтированный `~/.cache/huggingface` хоста; последующие
+старты берут её из кэша. Выполнять после сборки образа (шаг 5, `--build`) и до/вместо
+первого прогрева при `up`. Локальный кэш dev-машины (`~/.cache/huggingface/hub/models--BAAI--bge-m3`,
+~5.5 ГБ — несколько форматов) как источник scp — запасной вариант, если доступ к
+HF с сервера пропадёт.
 
 ### Шаг 2. Клонировать репозиторий по Deploy Token
 
