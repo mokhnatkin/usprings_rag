@@ -2,7 +2,7 @@
 name = "usprings-rag"
 version = "0.1.0"
 description = "Внутренний RAG-ассистент по инструкциям (пилот 1С ERP)"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.18.5",
     "fastapi>=0.139.0",

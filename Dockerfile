@@ -6,7 +6,7 @@
 #
 # Веса BGE-m3 (2,3 ГБ) в образ не кладём - монтируется HF-кэш хоста (см. compose).
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONUTF8=1 \
