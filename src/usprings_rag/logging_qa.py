@@ -45,7 +45,13 @@ def log_query(
         elapsed_seconds=answer.elapsed_seconds,
         model_id=answer.model_id,
         sources=[
-            {"document_id": s.document_id, "title": s.title} for s in answer.sources
+            {
+                "document_id": s.document_id,
+                "title": s.title,
+                "source_path": s.source_path,
+                "pages": s.pages,
+            }
+            for s in answer.sources
         ],
     )
     try:

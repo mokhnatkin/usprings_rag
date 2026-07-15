@@ -14,6 +14,8 @@ import logging
 import secrets
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
+from datetime import datetime
+from math import ceil
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
@@ -39,6 +41,7 @@ from .collection import DEFAULT_COLLECTION, Collection, get_collection, list_col
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
+from .history import get_owned, paginate, recent
 from .llm import create_client
 from .logging_qa import log_query, set_feedback
 from .models import User
@@ -164,6 +167,131 @@ def feedback(
     if not ok:
         raise HTTPException(status_code=404, detail="Запись не найдена")
     return {"ok": True}
+
+
+# --- История вопросов ---
+
+
+class HistoryItemOut(BaseModel):
+    id: int
+    question: str  # усечён до QUERY_LOG_PREVIEW_CHARS
+    created_at: datetime
+    refused: bool
+    collection: str
+
+
+class HistoryListOut(BaseModel):
+    items: list[HistoryItemOut]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class HistoryEntryOut(BaseModel):
+    id: int
+    question: str
+    answer: str
+    refused: bool
+    collection: str
+    created_at: datetime
+    best_similarity: float
+    sources: list[SourceOut]
+
+
+def _preview(text: str) -> str:
+    limit = settings.query_log_preview_chars
+    return text if len(text) <= limit else text[:limit] + "…"
+
+
+def _collection_titles() -> dict[int, str]:
+    return {c.id: c.title for c in list_collections(active_only=False)}
+
+
+def _to_item(row, titles: dict[int, str]) -> HistoryItemOut:
+    return HistoryItemOut(
+        id=row.id,
+        question=_preview(row.question),
+        created_at=row.created_at,
+        refused=row.outcome == "refused",
+        collection=titles.get(row.collection_id, ""),
+    )
+
+
+@app.get("/api/history/recent", response_model=list[HistoryItemOut])
+def history_recent(user: User = Depends(get_current_user)) -> list[HistoryItemOut]:
+    """Последние три вопроса текущего пользователя (для главной)."""
+    titles = _collection_titles()
+    with SessionLocal() as session:
+        rows = recent(session, user.id, 3)
+    return [_to_item(row, titles) for row in rows]
+
+
+@app.get("/api/history", response_model=HistoryListOut)
+def history_list(
+    page: int = 1, page_size: int = 20, user: User = Depends(get_current_user)
+) -> HistoryListOut:
+    """Страница истории текущего пользователя."""
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+    titles = _collection_titles()
+    with SessionLocal() as session:
+        items, total = paginate(session, user.id, page, page_size)
+    return HistoryListOut(
+        items=[_to_item(row, titles) for row in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=max(1, ceil(total / page_size)),
+    )
+
+
+@app.get("/api/history/{entry_id}", response_model=HistoryEntryOut)
+def history_entry(
+    entry_id: int, user: User = Depends(get_current_user)
+) -> HistoryEntryOut:
+    """Полная запись (только своя)."""
+    titles = _collection_titles()
+    with SessionLocal() as session:
+        row = get_owned(session, user.id, entry_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Запись не найдена")
+        sources = [
+            SourceOut(
+                document_id=s["document_id"],
+                title=s["title"],
+                source_path=s.get("source_path", ""),
+                pages=s.get("pages", ""),
+            )
+            for s in (row.sources or [])
+        ]
+        return HistoryEntryOut(
+            id=row.id,
+            question=row.question,
+            answer=row.answer,
+            refused=row.outcome == "refused",
+            collection=titles.get(row.collection_id, ""),
+            created_at=row.created_at,
+            best_similarity=round(row.best_similarity, 4),
+            sources=sources,
+        )
+
+
+@app.get("/history")
+def history_page(user: User = Depends(get_current_user)) -> FileResponse:
+    """Страница полной истории с пагинацией."""
+    return FileResponse(PACKAGE_DIR / "templates" / "history.html")
+
+
+@app.get("/history/{entry_id}")
+def history_entry_page(
+    entry_id: int, user: User = Depends(get_current_user)
+) -> FileResponse:
+    """Просмотр одного вопроса-ответа. Чужая/несуществующая запись - 404."""
+    with SessionLocal() as session:
+        if get_owned(session, user.id, entry_id) is None:
+            raise HTTPException(status_code=404, detail="Запись не найдена")
+    return FileResponse(PACKAGE_DIR / "templates" / "history_entry.html")
 
 
 class CollectionOut(BaseModel):

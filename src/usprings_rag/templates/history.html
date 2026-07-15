@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>История вопросов - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">← К вопросам</a>
+    <form method="post" action="/logout">
+      <button type="submit">Выйти</button>
+    </form>
+  </div>
+  <main>
+    <h1>История вопросов</h1>
+    <p id="empty" class="subtitle hidden">Пока нет вопросов.</p>
+
+    <ul id="list" class="history-list"></ul>
+
+    <div id="pager" class="pager hidden">
+      <button type="button" id="prev" class="secondary">← Назад</button>
+      <span id="pageinfo"></span>
+      <button type="button" id="next" class="secondary">Вперёд →</button>
+    </div>
+  </main>
+
+  <script>
+    const listEl = document.getElementById("list");
+    const emptyEl = document.getElementById("empty");
+    const pagerEl = document.getElementById("pager");
+    const prevBtn = document.getElementById("prev");
+    const nextBtn = document.getElementById("next");
+    const pageInfo = document.getElementById("pageinfo");
+
+    let page = parseInt(new URLSearchParams(location.search).get("page") || "1", 10);
+    if (!Number.isFinite(page) || page < 1) page = 1;
+
+    function render(data) {
+      listEl.replaceChildren();
+      emptyEl.classList.toggle("hidden", data.total !== 0);
+      for (const item of data.items) {
+        const link = document.createElement("a");
+        link.href = `/history/${item.id}`;
+        link.textContent = item.question;
+        const when = new Date(item.created_at).toLocaleString("ru-RU");
+        const meta = document.createElement("span");
+        meta.className = "history-meta";
+        meta.textContent = ` — ${item.collection} · ${when}${item.refused ? " · отказ" : ""}`;
+        const row = document.createElement("li");
+        row.append(link, meta);
+        listEl.append(row);
+      }
+      pagerEl.classList.toggle("hidden", data.pages <= 1);
+      pageInfo.textContent = `Страница ${data.page} из ${data.pages}`;
+      prevBtn.disabled = data.page <= 1;
+      nextBtn.disabled = data.page >= data.pages;
+    }
+
+    function load() {
+      fetch(`/api/history?page=${page}`)
+        .then((response) => response.json())
+        .then(render);
+    }
+
+    prevBtn.addEventListener("click", () => { if (page > 1) { page--; load(); } });
+    nextBtn.addEventListener("click", () => { page++; load(); });
+
+    load();
+  </script>
+</body>
+</html>

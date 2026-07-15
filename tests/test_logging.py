@@ -69,7 +69,14 @@ def test_answered_row_has_full_fields(user_and_erp):
         assert row.best_similarity == pytest.approx(0.7321)
         assert (row.prompt_tokens, row.completion_tokens, row.total_tokens) == (120, 40, 160)
         assert row.model_id == "qwen"
-        assert row.sources == [{"document_id": 7, "title": "Отгрузка"}]
+        assert row.sources == [
+            {
+                "document_id": 7,
+                "title": "Отгрузка",
+                "source_path": "its_erp/a.pdf",
+                "pages": "стр.1",
+            }
+        ]
 
 
 def test_refused_row_has_zero_tokens(user_and_erp):

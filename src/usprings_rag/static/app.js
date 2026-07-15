@@ -32,6 +32,33 @@ fetch("/collections")
     }
   });
 
+const recentBlock = document.getElementById("recent");
+const recentList = document.getElementById("recent-list");
+
+// Три последних вопроса пользователя - обновляем на загрузке и после нового ответа.
+function loadRecent() {
+  fetch("/api/history/recent")
+    .then((response) => response.json())
+    .then((items) => {
+      recentList.replaceChildren();
+      for (const item of items) {
+        const link = document.createElement("a");
+        link.href = `/history/${item.id}`;
+        link.textContent = item.question;
+        const when = new Date(item.created_at).toLocaleString("ru-RU");
+        const meta = document.createElement("span");
+        meta.className = "history-meta";
+        meta.textContent = ` — ${when}${item.refused ? " · отказ" : ""}`;
+        const row = document.createElement("li");
+        row.append(link, meta);
+        recentList.append(row);
+      }
+      recentBlock.classList.toggle("hidden", items.length === 0);
+    });
+}
+
+loadRecent();
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   const question = questionInput.value.trim();
@@ -114,6 +141,7 @@ function finish(data) {
     `| время: ${data.elapsed_seconds} с`;
 
   resetFeedback(data.log_id);
+  loadRecent();  // новый вопрос попал в лог - обновим блок последних
 }
 
 function resetFeedback(logId) {

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вопрос - История - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="/history">← К истории</a>
+    <form method="post" action="/logout">
+      <button type="submit">Выйти</button>
+    </form>
+  </div>
+  <main>
+    <h1 id="question">Вопрос</h1>
+
+    <section id="result">
+      <div id="answer"></div>
+      <div id="sources-block" class="hidden">
+        <h2>Источники</h2>
+        <ul id="sources"></ul>
+      </div>
+      <p id="meta" class="meta"></p>
+    </section>
+  </main>
+
+  <script>
+    const entryId = location.pathname.split("/").pop();
+    const questionEl = document.getElementById("question");
+    const resultEl = document.getElementById("result");
+    const answerEl = document.getElementById("answer");
+    const sourcesBlock = document.getElementById("sources-block");
+    const sourcesList = document.getElementById("sources");
+    const metaEl = document.getElementById("meta");
+
+    fetch(`/api/history/${entryId}`)
+      .then((response) => {
+        if (!response.ok) throw new Error("not found");
+        return response.json();
+      })
+      .then((data) => {
+        questionEl.textContent = data.question;
+        resultEl.classList.toggle("refused", data.refused);
+        answerEl.textContent = data.answer;
+
+        sourcesBlock.classList.toggle("hidden", data.sources.length === 0);
+        for (const source of data.sources) {
+          const link = document.createElement("a");
+          link.href = `/manuals/${source.source_path}`;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.textContent = source.pages
+            ? `${source.title} (${source.pages})`
+            : source.title;
+          const item = document.createElement("li");
+          item.append(link);
+          sourcesList.append(item);
+        }
+
+        const when = new Date(data.created_at).toLocaleString("ru-RU");
+        metaEl.textContent =
+          `база: ${data.collection} | сходство: ${data.best_similarity} | ${when}`;
+      })
+      .catch(() => {
+        questionEl.textContent = "Запись не найдена";
+        resultEl.classList.add("hidden");
+      });
+  </script>
+</body>
+</html>

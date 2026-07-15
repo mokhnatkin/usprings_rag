@@ -45,5 +45,9 @@ class Settings(BaseSettings):
     superadmin_login: str = ""
     superadmin_password: str = ""
 
+    # Логирование и история: усечение вопроса/ответа в списках (в самой записи -
+    # полный текст). Детальный просмотр показывает полный текст.
+    query_log_preview_chars: int = 160
+
 
 settings = Settings()
