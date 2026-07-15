@@ -52,6 +52,33 @@ def create_collection(
     )
     session.commit()
     invalidate_cache()
+    return _to_collection(row)
+
+
+def update_collection(
+    session: Session,
+    collection_id: int,
+    title: str,
+    threshold: float,
+    is_active: bool,
+) -> Collection:
+    """Изменить редактируемые поля коллекции. ValueError - коллекции нет.
+
+    `code` и `folder` неизменяемы (привязаны к секции chunks и к файлам на диске),
+    правятся только title/threshold/is_active. Сбрасывает кэш read-model.
+    """
+    row = session.get(CollectionRow, collection_id)
+    if row is None:
+        raise ValueError(f"коллекция id={collection_id} не найдена")
+    row.title = title
+    row.threshold = threshold
+    row.is_active = is_active
+    session.commit()
+    invalidate_cache()
+    return _to_collection(row)
+
+
+def _to_collection(row: CollectionRow) -> Collection:
     return Collection(
         code=row.code,
         title=row.title,

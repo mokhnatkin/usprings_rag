@@ -8,7 +8,13 @@
 </head>
 <body>
   <div class="topbar">
-    <a href="/">← К вопросам</a>
+    <nav class="nav-left">
+      <a href="/">← К вопросам</a>
+      <a href="/admin/documents">Документы</a>
+      <a href="/admin/logs">Журнал</a>
+      <a href="/admin/users" class="su-only hidden">Пользователи</a>
+      <a href="/admin/collections" class="su-only hidden">Коллекции</a>
+    </nav>
     <form method="post" action="/logout">
       <button type="submit">Выйти</button>
     </form>
@@ -52,6 +58,12 @@
   </main>
 
   <script>
+    // Пункты «Пользователи»/«Коллекции» - только super-admin.
+    fetch("/api/me").then((r) => r.json()).then((me) => {
+      if (me.role === "super_admin")
+        document.querySelectorAll(".su-only").forEach((el) => el.classList.remove("hidden"));
+    });
+
     const collectionSelect = document.getElementById("collection");
     const uploadForm = document.getElementById("upload-form");
     const uploadBtn = document.getElementById("upload-btn");

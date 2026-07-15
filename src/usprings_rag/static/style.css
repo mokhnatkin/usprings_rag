@@ -102,6 +102,13 @@ input[type="password"]:focus {
 
 .topbar form { margin: 0; }
 
+/* Левая часть шапки: набор ссылок навигации. */
+.nav-left { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+
+.nav-left a { color: var(--accent); text-decoration: none; }
+
+.nav-left a:hover { text-decoration: underline; }
+
 .topbar button {
   padding: 0.35rem 0.9rem;
   font-size: 0.85rem;
@@ -159,6 +166,15 @@ button.secondary:hover { border-color: var(--accent); }
 #result.refused #answer {
   background: var(--refusal-bg);
   border-color: var(--refusal-border);
+}
+
+/* Блок с полным текстом (просмотр записи журнала, детальная история). */
+.answer-box {
+  white-space: pre-wrap;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfbfd;
 }
 
 h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
@@ -236,7 +252,34 @@ h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
 
 .doc-table button { padding: 0.35rem 0.9rem; font-size: 0.8rem; }
 
-/* Архивный документ приглушён - виден в списке, но помечен как неактуальный. */
+/* Архивный/неактивный элемент приглушён - виден в списке, но помечен. */
 .doc-table tr.archived td { color: var(--muted); }
+
+.doc-table input[type="text"],
+.doc-table input[type="number"] { margin-bottom: 0; }
+
+/* Компактная форма в строку (создание коллекции/пользователя). */
+.grid-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+.grid-form input,
+.grid-form select { width: auto; margin-bottom: 0; flex: 1 1 9rem; }
+
+.grid-form button { flex: 0 0 auto; }
+
+/* Уведомление об успехе (напр. временный пароль). */
+.notice {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  color: #256029;
+  background: #eef8ee;
+  border: 1px solid #8fca8f;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* Панель выдачи доступа к коллекциям. */
+.access-panel { padding: 0.5rem 0; }
+
+.access-panel label { margin-right: 1rem; font-size: 0.9rem; color: var(--text); }
 
 .hidden { display: none; }

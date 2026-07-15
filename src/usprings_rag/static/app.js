@@ -32,13 +32,27 @@ fetch("/collections")
     }
   });
 
-// Ссылка «Документы» - только администраторам (роль узнаём с сервера; экран всё
-// равно закрыт 403, ссылка лишь не мозолит глаза обычному пользователю).
+// Редирект с закрытого раздела (?forbidden=1) - показываем уведомление вместо
+// «сырого» 403, пользователь остаётся в портале.
+if (new URLSearchParams(location.search).has("forbidden")) {
+  document.getElementById("forbidden").classList.remove("hidden");
+  history.replaceState(null, "", "/");
+}
+
+// Пункты меню по роли (роль узнаём с сервера; экраны всё равно закрыты 403,
+// меню лишь не показывает лишнее). Админам - Документы и Журнал; super-admin -
+// плюс Пользователи и Коллекции.
 fetch("/api/me")
   .then((response) => response.json())
   .then((me) => {
-    if (me.role === "collection_admin" || me.role === "super_admin") {
+    const admin = me.role === "collection_admin" || me.role === "super_admin";
+    if (admin) {
       document.getElementById("nav-documents").classList.remove("hidden");
+      document.getElementById("nav-logs").classList.remove("hidden");
+    }
+    if (me.role === "super_admin") {
+      document.getElementById("nav-users").classList.remove("hidden");
+      document.getElementById("nav-collections").classList.remove("hidden");
     }
   });
 

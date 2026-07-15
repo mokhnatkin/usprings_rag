@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Пользователи - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="nav-left">
+      <a href="/">← К вопросам</a>
+      <a href="/admin/documents">Документы</a>
+      <a href="/admin/logs">Журнал</a>
+      <a href="/admin/users">Пользователи</a>
+      <a href="/admin/collections">Коллекции</a>
+    </nav>
+    <form method="post" action="/logout"><button type="submit">Выйти</button></form>
+  </div>
+  <main>
+    <h1>Справочник пользователей</h1>
+    <p class="subtitle">
+      Создание учёток с ролью, включение/выключение, сброс пароля и выдача доступа
+      к коллекциям. Обычный пользователь при создании получает доступ ко всем
+      активным коллекциям; администратору коллекций доступ выдаётся вручную.
+    </p>
+
+    <p id="notice" class="notice hidden"></p>
+
+    <section class="upload">
+      <h2>Новый пользователь</h2>
+      <form id="create-form" class="grid-form">
+        <input type="text" id="u-login" placeholder="логин" required>
+        <input type="text" id="u-name" placeholder="ФИО" required>
+        <input type="text" id="u-email" placeholder="email (необязательно)">
+        <select id="u-role">
+          <option value="user">Пользователь</option>
+          <option value="collection_admin">Админ коллекций</option>
+          <option value="super_admin">Супер-админ</option>
+        </select>
+        <input type="text" id="u-password" placeholder="пароль" required>
+        <button type="submit">Создать</button>
+      </form>
+      <p id="create-status" class="form-error hidden"></p>
+    </section>
+
+    <section>
+      <h2>Пользователи</h2>
+      <table class="doc-table">
+        <thead>
+          <tr><th>Логин</th><th>ФИО</th><th>Роль</th><th>Статус</th><th>Коллекции</th><th></th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const ROLE_RU = {
+      user: "Пользователь", collection_admin: "Админ коллекций", super_admin: "Супер-админ",
+    };
+    const rows = document.getElementById("rows");
+    const notice = document.getElementById("notice");
+    const createForm = document.getElementById("create-form");
+    const createStatus = document.getElementById("create-status");
+    let me = null;
+    let collections = [];
+
+    function showNotice(text) {
+      notice.textContent = text;
+      notice.classList.remove("hidden");
+    }
+
+    Promise.all([
+      fetch("/api/me").then((r) => r.json()),
+      fetch("/api/admin/collections").then((r) => r.json()),
+    ]).then(([meData, cols]) => {
+      me = meData;
+      collections = cols;
+      load();
+    });
+
+    function load() {
+      fetch("/api/admin/users")
+        .then((r) => r.json())
+        .then((users) => {
+          rows.replaceChildren();
+          for (const u of users) rows.append(...renderRows(u));
+        });
+    }
+
+    function renderRows(u) {
+      const tr = document.createElement("tr");
+      if (!u.is_active) tr.classList.add("archived");
+
+      cell(tr, u.login);
+      cell(tr, u.full_name);
+      cell(tr, ROLE_RU[u.role] || u.role);
+      cell(tr, u.is_active ? "активен" : "выключен");
+      cell(tr, u.role === "super_admin" ? "все" : (u.collection_codes.join(", ") || "—"));
+
+      const action = document.createElement("td");
+      action.append(
+        actionButton(u.is_active ? "Выключить" : "Включить", () => toggleActive(u)),
+        actionButton("Пароль", () => resetPassword(u)),
+      );
+      if (u.role !== "super_admin")
+        action.append(actionButton("Доступ", () => toggleAccess(u, panelRow)));
+      tr.append(action);
+
+      // Скрытая строка-панель выдачи доступа (разворачивается по кнопке «Доступ»).
+      const panelRow = document.createElement("tr");
+      panelRow.classList.add("hidden");
+      const panelCell = document.createElement("td");
+      panelCell.colSpan = 6;
+      panelRow.append(panelCell);
+      panelRow.dataset.user = u.id;
+
+      return [tr, panelRow];
+    }
+
+    function cell(tr, text) {
+      const td = document.createElement("td");
+      td.textContent = text;
+      tr.append(td);
+      return td;
+    }
+
+    function actionButton(label, handler) {
+      const b = document.createElement("button");
+      b.className = "secondary";
+      b.textContent = label;
+      b.addEventListener("click", handler);
+      return b;
+    }
+
+    function toggleActive(u) {
+      if (u.id === me.id && u.is_active) {
+        showNotice("Нельзя выключить собственную учётку.");
+        return;
+      }
+      fetch(`/api/admin/users/${u.id}/active?active=${!u.is_active}`, { method: "POST" })
+        .then((r) => { if (r.ok) load(); });
+    }
+
+    function resetPassword(u) {
+      fetch(`/api/admin/users/${u.id}/reset-password`, { method: "POST" })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.temp_password)
+            showNotice(`Временный пароль для ${u.login}: ${data.temp_password} (передайте пользователю, при входе сменит).`);
+        });
+    }
+
+    function toggleAccess(u, panelRow) {
+      const cell = panelRow.firstChild;
+      if (!panelRow.classList.contains("hidden")) {
+        panelRow.classList.add("hidden");
+        return;
+      }
+      cell.replaceChildren();
+      const panel = document.createElement("div");
+      panel.className = "access-panel";
+      const checks = [];
+      for (const c of collections) {
+        const label = document.createElement("label");
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.value = c.id;
+        box.checked = u.collection_codes.includes(c.code);
+        checks.push(box);
+        label.append(box, document.createTextNode(" " + c.title));
+        panel.append(label);
+      }
+      const save = document.createElement("button");
+      save.className = "secondary";
+      save.textContent = "Сохранить доступ";
+      save.addEventListener("click", () => {
+        const ids = checks.filter((b) => b.checked).map((b) => parseInt(b.value, 10));
+        fetch(`/api/admin/users/${u.id}/access`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ collection_ids: ids }),
+        }).then((r) => { if (r.ok) { showNotice(`Доступ ${u.login} обновлён.`); load(); } });
+      });
+      panel.append(document.createElement("br"), save);
+      cell.append(panel);
+      panelRow.classList.remove("hidden");
+    }
+
+    createForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      createStatus.classList.add("hidden");
+      fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          login: document.getElementById("u-login").value.trim(),
+          full_name: document.getElementById("u-name").value.trim(),
+          email: document.getElementById("u-email").value.trim() || null,
+          role: document.getElementById("u-role").value,
+          password: document.getElementById("u-password").value,
+        }),
+      })
+        .then((r) => {
+          if (!r.ok) return r.json().then((e) => { throw new Error(e.detail || "Ошибка"); });
+          createForm.reset();
+          load();
+        })
+        .catch((err) => {
+          createStatus.textContent = err.message;
+          createStatus.classList.remove("hidden");
+        });
+    });
+  </script>
+</body>
+</html>

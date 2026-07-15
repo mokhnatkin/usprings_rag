@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Коллекции - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="nav-left">
+      <a href="/">← К вопросам</a>
+      <a href="/admin/documents">Документы</a>
+      <a href="/admin/logs">Журнал</a>
+      <a href="/admin/users">Пользователи</a>
+      <a href="/admin/collections">Коллекции</a>
+    </nav>
+    <form method="post" action="/logout"><button type="submit">Выйти</button></form>
+  </div>
+  <main>
+    <h1>Справочник коллекций</h1>
+    <p class="subtitle">
+      Код и папка неизменяемы (привязаны к секции и файлам). Правятся название,
+      порог сходства и активность. Порог действует в поиске сразу, без перезапуска.
+    </p>
+
+    <section class="upload">
+      <h2>Новая коллекция</h2>
+      <p class="meta">
+        Создание заводит секцию хранилища и папку инструкций - коллекция сразу
+        пригодна для загрузки PDF.
+      </p>
+      <form id="create-form" class="grid-form">
+        <input type="text" id="c-code" placeholder="код (лат., напр. buh)" required>
+        <input type="text" id="c-title" placeholder="Название (напр. 1С:Бухгалтерия)" required>
+        <input type="text" id="c-folder" placeholder="папка (напр. its_buh)" required>
+        <input type="number" id="c-threshold" step="0.01" min="0" max="1" placeholder="порог, 0.5" required>
+        <button type="submit">Создать</button>
+      </form>
+      <p id="create-status" class="form-error hidden"></p>
+    </section>
+
+    <section>
+      <h2>Коллекции</h2>
+      <p id="save-status" class="notice hidden"></p>
+      <table class="doc-table">
+        <thead>
+          <tr><th>Код</th><th>Название</th><th>Папка</th><th>Порог</th><th>Активна</th><th></th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const rows = document.getElementById("rows");
+    const createForm = document.getElementById("create-form");
+    const createStatus = document.getElementById("create-status");
+    const saveStatus = document.getElementById("save-status");
+
+    function load() {
+      // no-store: после сохранения список должен показывать свежие данные, а не
+      // возможный кэш браузера.
+      fetch("/api/admin/collections", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((items) => {
+          rows.replaceChildren();
+          for (const c of items) rows.append(renderRow(c));
+        });
+    }
+
+    function flashSaved(text) {
+      saveStatus.textContent = text;
+      saveStatus.classList.remove("hidden");
+      setTimeout(() => saveStatus.classList.add("hidden"), 2500);
+    }
+
+    function renderRow(c) {
+      const tr = document.createElement("tr");
+      if (!c.is_active) tr.classList.add("archived");
+
+      const code = document.createElement("td");
+      code.textContent = c.code;
+
+      const title = document.createElement("td");
+      const titleInput = document.createElement("input");
+      titleInput.type = "text";
+      titleInput.value = c.title;
+      title.append(titleInput);
+
+      const folder = document.createElement("td");
+      folder.textContent = c.folder;
+
+      const threshold = document.createElement("td");
+      const thInput = document.createElement("input");
+      thInput.type = "number";
+      thInput.step = "0.01";
+      thInput.min = "0";
+      thInput.max = "1";
+      thInput.value = c.threshold;
+      thInput.style.width = "5rem";
+      threshold.append(thInput);
+
+      const active = document.createElement("td");
+      const activeInput = document.createElement("input");
+      activeInput.type = "checkbox";
+      activeInput.checked = c.is_active;
+      active.append(activeInput);
+
+      const action = document.createElement("td");
+      const save = document.createElement("button");
+      save.className = "secondary";
+      save.textContent = "Сохранить";
+      save.addEventListener("click", () => {
+        save.disabled = true;
+        fetch(`/api/admin/collections/${c.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: titleInput.value.trim(),
+            threshold: parseFloat(thInput.value),
+            is_active: activeInput.checked,
+          }),
+        }).then((r) => {
+          save.disabled = false;
+          if (r.ok) {
+            flashSaved(`Коллекция «${c.code}» сохранена.`);
+            load();
+          }
+        });
+      });
+      action.append(save);
+
+      tr.append(code, title, folder, threshold, active, action);
+      return tr;
+    }
+
+    createForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      createStatus.classList.add("hidden");
+      fetch("/api/admin/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: document.getElementById("c-code").value.trim(),
+          title: document.getElementById("c-title").value.trim(),
+          folder: document.getElementById("c-folder").value.trim(),
+          threshold: parseFloat(document.getElementById("c-threshold").value),
+        }),
+      })
+        .then((r) => {
+          if (!r.ok) return r.json().then((e) => { throw new Error(e.detail || "Ошибка"); });
+          createForm.reset();
+          load();
+        })
+        .catch((err) => {
+          createStatus.textContent = err.message;
+          createStatus.classList.remove("hidden");
+        });
+    });
+
+    load();
+  </script>
+</body>
+</html>

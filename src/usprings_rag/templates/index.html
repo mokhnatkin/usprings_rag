@@ -8,13 +8,21 @@
 </head>
 <body>
   <div class="topbar">
-    <a href="/admin/documents" id="nav-documents" class="hidden">Документы</a>
-    <a href="/profile">Профиль</a>
+    <nav class="nav-left">
+      <a href="/admin/documents" id="nav-documents" class="hidden">Документы</a>
+      <a href="/admin/logs" id="nav-logs" class="hidden">Журнал</a>
+      <a href="/admin/users" id="nav-users" class="hidden">Пользователи</a>
+      <a href="/admin/collections" id="nav-collections" class="hidden">Коллекции</a>
+      <a href="/profile">Профиль</a>
+    </nav>
     <form method="post" action="/logout">
       <button type="submit">Выйти</button>
     </form>
   </div>
   <main>
+    <p id="forbidden" class="form-error hidden">
+      У вас нет доступа к этому разделу.
+    </p>
     <h1>Ассистент по инструкциям</h1>
     <p class="subtitle">
       Выберите базу знаний и задайте вопрос. Ответ формируется только по документам

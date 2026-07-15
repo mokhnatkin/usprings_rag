@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Журнал - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="nav-left">
+      <a href="/">← К вопросам</a>
+      <a href="/admin/documents">Документы</a>
+      <a href="/admin/logs">Журнал</a>
+      <a href="/admin/users" class="su-only hidden">Пользователи</a>
+      <a href="/admin/collections" class="su-only hidden">Коллекции</a>
+    </nav>
+    <form method="post" action="/logout"><button type="submit">Выйти</button></form>
+  </div>
+  <main>
+    <h1>Журнал вопросов-ответов</h1>
+    <p class="subtitle">
+      Полная история запросов с диагностикой. Super-admin видит весь портал,
+      администратор коллекций - только свои коллекции.
+    </p>
+
+    <form id="filters" class="grid-form">
+      <select id="f-collection"><option value="">Все коллекции</option></select>
+      <input type="date" id="f-from" title="с даты">
+      <input type="date" id="f-to" title="по дату">
+      <button type="submit">Применить</button>
+    </form>
+
+    <table class="doc-table">
+      <thead>
+        <tr><th>Время</th><th>Пользователь</th><th>База</th><th>Вопрос</th><th>Исход</th><th>Сходство</th><th>Токены</th><th>Неверно</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p id="empty" class="meta hidden">Записей нет.</p>
+
+    <div class="pager">
+      <button type="button" id="prev">←</button>
+      <span id="pageinfo"></span>
+      <button type="button" id="next">→</button>
+    </div>
+
+    <section id="detail" class="hidden">
+      <h2>Запись <span id="d-id"></span></h2>
+      <p class="meta" id="d-meta"></p>
+      <h2>Вопрос</h2>
+      <div id="d-question" class="answer-box"></div>
+      <h2>Ответ</h2>
+      <div id="d-answer" class="answer-box"></div>
+      <div id="d-sources-block" class="hidden">
+        <h2>Источники</h2>
+        <ul id="d-sources"></ul>
+      </div>
+      <p id="d-feedback" class="meta"></p>
+    </section>
+  </main>
+
+  <script>
+    // Пункты «Пользователи»/«Коллекции» - только super-admin.
+    fetch("/api/me").then((r) => r.json()).then((me) => {
+      if (me.role === "super_admin")
+        document.querySelectorAll(".su-only").forEach((el) => el.classList.remove("hidden"));
+    });
+
+    const OUTCOME_RU = { answered: "ответ", refused: "отказ" };
+    const rows = document.getElementById("rows");
+    const empty = document.getElementById("empty");
+    const pageinfo = document.getElementById("pageinfo");
+    const prev = document.getElementById("prev");
+    const next = document.getElementById("next");
+    const detail = document.getElementById("detail");
+    let page = 1;
+    let pages = 1;
+
+    fetch("/collections")
+      .then((r) => r.json())
+      .then((items) => {
+        const sel = document.getElementById("f-collection");
+        for (const c of items) {
+          const o = document.createElement("option");
+          o.value = c.code;
+          o.textContent = c.title;
+          sel.append(o);
+        }
+      });
+
+    document.getElementById("filters").addEventListener("submit", (e) => {
+      e.preventDefault();
+      page = 1;
+      load();
+    });
+    prev.addEventListener("click", () => { if (page > 1) { page--; load(); } });
+    next.addEventListener("click", () => { if (page < pages) { page++; load(); } });
+
+    function load() {
+      const params = new URLSearchParams({ page, page_size: 20 });
+      const coll = document.getElementById("f-collection").value;
+      const from = document.getElementById("f-from").value;
+      const to = document.getElementById("f-to").value;
+      if (coll) params.set("collection", coll);
+      if (from) params.set("date_from", from);
+      if (to) params.set("date_to", to);
+
+      fetch(`/api/admin/logs?${params}`)
+        .then((r) => r.json())
+        .then((data) => {
+          pages = data.pages;
+          rows.replaceChildren();
+          empty.classList.toggle("hidden", data.items.length > 0);
+          for (const item of data.items) rows.append(renderRow(item));
+          pageinfo.textContent = `стр. ${data.page} из ${data.pages} (всего ${data.total})`;
+          prev.disabled = data.page <= 1;
+          next.disabled = data.page >= data.pages;
+        });
+    }
+
+    function renderRow(item) {
+      const tr = document.createElement("tr");
+      tr.style.cursor = "pointer";
+      td(tr, new Date(item.created_at).toLocaleString("ru-RU"));
+      td(tr, item.user_login);
+      td(tr, item.collection);
+      td(tr, item.question);
+      td(tr, OUTCOME_RU[item.outcome] || item.outcome);
+      td(tr, item.best_similarity);
+      td(tr, item.total_tokens);
+      td(tr, item.feedback ? "да" : "");
+      tr.addEventListener("click", () => openDetail(item.id));
+      return tr;
+    }
+
+    function td(tr, text) {
+      const cell = document.createElement("td");
+      cell.textContent = text;
+      tr.append(cell);
+    }
+
+    function openDetail(id) {
+      fetch(`/api/admin/logs/${id}`)
+        .then((r) => r.json())
+        .then((d) => {
+          document.getElementById("d-id").textContent = "#" + d.id;
+          document.getElementById("d-meta").textContent =
+            `${new Date(d.created_at).toLocaleString("ru-RU")} | ${d.user_login} | база: ${d.collection} | ` +
+            `${OUTCOME_RU[d.outcome] || d.outcome} | сходство: ${d.best_similarity} | ` +
+            `токены: ${d.total_tokens} | модель: ${d.model_id || "—"} | ${d.elapsed_seconds} с`;
+          document.getElementById("d-question").textContent = d.question;
+          document.getElementById("d-answer").textContent = d.answer;
+
+          const sblock = document.getElementById("d-sources-block");
+          const slist = document.getElementById("d-sources");
+          slist.replaceChildren();
+          sblock.classList.toggle("hidden", d.sources.length === 0);
+          for (const s of d.sources) {
+            const a = document.createElement("a");
+            a.href = `/manuals/${s.source_path}`;
+            a.target = "_blank";
+            a.rel = "noopener";
+            a.textContent = s.pages ? `${s.title} (${s.pages})` : s.title;
+            const li = document.createElement("li");
+            li.append(a);
+            slist.append(li);
+          }
+
+          const fb = document.getElementById("d-feedback");
+          fb.textContent = d.feedback
+            ? `Помечено неверным${d.feedback_comment ? ": " + d.feedback_comment : ""}`
+            : "";
+          detail.classList.remove("hidden");
+          detail.scrollIntoView({ behavior: "smooth" });
+        });
+    }
+
+    load();
+  </script>
+</body>
+</html>

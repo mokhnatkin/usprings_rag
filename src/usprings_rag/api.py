@@ -14,7 +14,7 @@ import logging
 import secrets
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from math import ceil
 from pathlib import Path
 
@@ -38,10 +38,13 @@ from .auth import (
     logout_user,
 )
 from .collection import DEFAULT_COLLECTION, Collection, get_collection, list_collections
+from .collections_service import create_collection, update_collection
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
 from .admin import documents as admin_docs
+from .admin import logs as admin_logs
+from .admin import users as admin_users
 from .history import get_owned, paginate, recent
 from .indexing import jobs as index_jobs
 from .indexing.worker import IndexWorker
@@ -352,6 +355,20 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+def _admin_page_redirect(request: Request, need_super: bool) -> RedirectResponse | None:
+    """Гейт для HTML-страниц админки: аноним -> вход, нехватка прав -> портал с
+    уведомлением (а не «сырой» JSON 403, как у API-эндпоинтов для fetch)."""
+    user = current_user_or_none(request)
+    if user is None:
+        return RedirectResponse("/login", status_code=303)
+    allowed = user.role == Role.SUPER_ADMIN or (
+        not need_super and user.role == Role.COLLECTION_ADMIN
+    )
+    if not allowed:
+        return RedirectResponse("/?forbidden=1", status_code=303)
+    return None
+
+
 class DocumentOut(BaseModel):
     id: int
     collection: str
@@ -373,9 +390,11 @@ class JobOut(BaseModel):
 
 
 @app.get("/admin/documents")
-def admin_documents_page(user: User = Depends(require_admin)) -> FileResponse:
+def admin_documents_page(request: Request):
     """Экран управления документами (загрузка, статус индексации, архивация)."""
-    return FileResponse(PACKAGE_DIR / "templates" / "admin" / "documents.html")
+    return _admin_page_redirect(request, need_super=False) or FileResponse(
+        PACKAGE_DIR / "templates" / "admin" / "documents.html"
+    )
 
 
 @app.get("/api/admin/documents", response_model=list[DocumentOut])
@@ -454,6 +473,361 @@ def admin_document_unarchive(
     """Вернуть документ из архива (снова в поиске, переиндексация не нужна)."""
     _set_document_archived(doc_id, False, user)
     return {"ok": True}
+
+
+# --- Админка: справочник пользователей (super_admin) ---
+
+
+def require_super_admin(user: User = Depends(get_current_user)) -> User:
+    """Зависимость: только super_admin, иначе 403."""
+    if user.role != Role.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Требуются права super-admin")
+    return user
+
+
+class UserInfoOut(BaseModel):
+    id: int
+    login: str
+    full_name: str
+    email: str | None
+    role: str
+    is_active: bool
+    created_at: datetime
+    collection_codes: list[str]
+
+
+class UserCreateIn(BaseModel):
+    login: str
+    full_name: str
+    email: str | None = None
+    role: str
+    password: str
+
+
+class AccessIn(BaseModel):
+    collection_ids: list[int]
+
+
+@app.get("/admin/users")
+def admin_users_page(request: Request):
+    """Экран справочника пользователей."""
+    return _admin_page_redirect(request, need_super=True) or FileResponse(
+        PACKAGE_DIR / "templates" / "admin" / "users.html"
+    )
+
+
+@app.get("/api/admin/users", response_model=list[UserInfoOut])
+def admin_users_list(user: User = Depends(require_super_admin)) -> list[UserInfoOut]:
+    """Все пользователи с их доступами."""
+    with SessionLocal() as session:
+        items = admin_users.list_users(session)
+    return [UserInfoOut(**vars(item)) for item in items]
+
+
+@app.post("/api/admin/users")
+def admin_users_create(
+    payload: UserCreateIn, user: User = Depends(require_super_admin)
+) -> dict:
+    """Создать пользователя с ролью (user - автогрант на активные коллекции)."""
+    with SessionLocal() as session:
+        try:
+            user_id = admin_users.create_user(
+                session,
+                payload.login.strip(),
+                payload.full_name.strip(),
+                payload.email,
+                payload.role,
+                payload.password,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+    return {"id": user_id}
+
+
+@app.post("/api/admin/users/{user_id}/active")
+def admin_users_set_active(
+    user_id: int, active: bool, user: User = Depends(require_super_admin)
+) -> dict:
+    """Включить/выключить учётку. Себя деактивировать нельзя (защита от самоблокировки)."""
+    if user_id == user.id and not active:
+        raise HTTPException(
+            status_code=422, detail="Нельзя деактивировать собственную учётку"
+        )
+    with SessionLocal() as session:
+        if not admin_users.set_active(session, user_id, active):
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return {"ok": True}
+
+
+@app.post("/api/admin/users/{user_id}/reset-password")
+def admin_users_reset_password(
+    user_id: int, user: User = Depends(require_super_admin)
+) -> dict:
+    """Сбросить пароль на временный и вернуть его (показать один раз)."""
+    with SessionLocal() as session:
+        temp = admin_users.reset_password(session, user_id)
+    if temp is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return {"temp_password": temp}
+
+
+@app.put("/api/admin/users/{user_id}/access")
+def admin_users_set_access(
+    user_id: int, payload: AccessIn, user: User = Depends(require_super_admin)
+) -> dict:
+    """Задать полный набор доступов к коллекциям (для user и collection_admin)."""
+    with SessionLocal() as session:
+        if not admin_users.set_access(session, user_id, payload.collection_ids):
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+    return {"ok": True}
+
+
+# --- Админка: справочник коллекций (super_admin) ---
+
+
+class CollectionAdminOut(BaseModel):
+    id: int
+    code: str
+    title: str
+    folder: str
+    threshold: float
+    is_active: bool
+
+
+class CollectionCreateIn(BaseModel):
+    code: str
+    title: str
+    folder: str
+    threshold: float
+
+
+class CollectionUpdateIn(BaseModel):
+    title: str
+    threshold: float
+    is_active: bool
+
+
+def _collection_admin_out(c: Collection) -> CollectionAdminOut:
+    return CollectionAdminOut(
+        id=c.id,
+        code=c.code,
+        title=c.title,
+        folder=c.folder,
+        threshold=c.threshold,
+        is_active=c.is_active,
+    )
+
+
+@app.get("/admin/collections")
+def admin_collections_page(request: Request):
+    """Экран справочника коллекций."""
+    return _admin_page_redirect(request, need_super=True) or FileResponse(
+        PACKAGE_DIR / "templates" / "admin" / "collections.html"
+    )
+
+
+@app.get("/api/admin/collections", response_model=list[CollectionAdminOut])
+def admin_collections_list(
+    user: User = Depends(require_super_admin),
+) -> list[CollectionAdminOut]:
+    """Все коллекции, включая деактивированные."""
+    return [_collection_admin_out(c) for c in list_collections(active_only=False)]
+
+
+@app.post("/api/admin/collections", response_model=CollectionAdminOut)
+def admin_collections_create(
+    payload: CollectionCreateIn, user: User = Depends(require_super_admin)
+) -> CollectionAdminOut:
+    """Создать коллекцию: строка + секция chunks + папка (сразу пригодна для ingest)."""
+    with SessionLocal() as session:
+        try:
+            created = create_collection(
+                session,
+                payload.code.strip(),
+                payload.title.strip(),
+                payload.folder.strip(),
+                payload.threshold,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+    return _collection_admin_out(created)
+
+
+@app.patch("/api/admin/collections/{collection_id}", response_model=CollectionAdminOut)
+def admin_collections_update(
+    collection_id: int,
+    payload: CollectionUpdateIn,
+    user: User = Depends(require_super_admin),
+) -> CollectionAdminOut:
+    """Изменить title/threshold/is_active (code и folder неизменяемы)."""
+    with SessionLocal() as session:
+        try:
+            updated = update_collection(
+                session,
+                collection_id,
+                payload.title.strip(),
+                payload.threshold,
+                payload.is_active,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+    return _collection_admin_out(updated)
+
+
+# --- Админка: просмотр журнала вопросов-ответов (collection_admin, super_admin) ---
+
+
+class LogRowOut(BaseModel):
+    id: int
+    created_at: datetime
+    user_login: str
+    collection: str
+    question: str  # усечён до QUERY_LOG_PREVIEW_CHARS
+    outcome: str
+    best_similarity: float
+    total_tokens: int
+    feedback: bool
+
+
+class LogListOut(BaseModel):
+    items: list[LogRowOut]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class LogEntryOut(BaseModel):
+    id: int
+    created_at: datetime
+    user_login: str
+    collection: str
+    question: str
+    answer: str
+    outcome: str
+    best_similarity: float
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    elapsed_seconds: float
+    model_id: str
+    sources: list[SourceOut]
+    feedback: bool
+    feedback_at: datetime | None
+    feedback_comment: str | None
+
+
+def _log_allowed_ids(session, user: User) -> set[int] | None:
+    """id коллекций, чьи логи доступны: None - весь портал (super_admin)."""
+    if user.role == Role.SUPER_ADMIN:
+        return None
+    codes = accessible_codes(session, user)
+    return {c.id for c in list_collections(active_only=False) if c.code in codes}
+
+
+def _parse_day(value: str | None, *, end: bool = False) -> datetime | None:
+    """YYYY-MM-DD -> datetime. Для верхней границы берём начало следующего дня
+    (включительный день). Некорректная дата - 422."""
+    if not value:
+        return None
+    try:
+        day = datetime.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"Некорректная дата: {value}")
+    return day + timedelta(days=1) if end else day
+
+
+def _log_row_out(row) -> LogRowOut:
+    ql, login, code = row
+    return LogRowOut(
+        id=ql.id,
+        created_at=ql.created_at,
+        user_login=login,
+        collection=code,
+        question=_preview(ql.question),
+        outcome=ql.outcome,
+        best_similarity=round(ql.best_similarity, 4),
+        total_tokens=ql.total_tokens,
+        feedback=bool(ql.feedback),
+    )
+
+
+@app.get("/admin/logs")
+def admin_logs_page(request: Request):
+    """Экран журнала вопросов-ответов."""
+    return _admin_page_redirect(request, need_super=False) or FileResponse(
+        PACKAGE_DIR / "templates" / "admin" / "logs.html"
+    )
+
+
+@app.get("/api/admin/logs", response_model=LogListOut)
+def admin_logs_list(
+    collection: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    user: User = Depends(require_admin),
+) -> LogListOut:
+    """Журнал по правам и фильтрам (коллекция, период), новые сверху."""
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+    df = _parse_day(date_from)
+    dt = _parse_day(date_to, end=True)
+    collection_id = _resolve_collection(collection).id if collection else None
+    with SessionLocal() as session:
+        allowed = _log_allowed_ids(session, user)
+        rows, total = admin_logs.list_logs(
+            session, allowed, collection_id, df, dt, page, page_size
+        )
+    return LogListOut(
+        items=[_log_row_out(r) for r in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=max(1, ceil(total / page_size)),
+    )
+
+
+@app.get("/api/admin/logs/{log_id}", response_model=LogEntryOut)
+def admin_logs_entry(
+    log_id: int, user: User = Depends(require_admin)
+) -> LogEntryOut:
+    """Полная запись журнала (с проверкой прав по коллекции)."""
+    with SessionLocal() as session:
+        allowed = _log_allowed_ids(session, user)
+        row = admin_logs.get_log(session, allowed, log_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    ql, login, code = row
+    sources = [
+        SourceOut(
+            document_id=s["document_id"],
+            title=s["title"],
+            source_path=s.get("source_path", ""),
+            pages=s.get("pages", ""),
+        )
+        for s in (ql.sources or [])
+    ]
+    return LogEntryOut(
+        id=ql.id,
+        created_at=ql.created_at,
+        user_login=login,
+        collection=code,
+        question=ql.question,
+        answer=ql.answer,
+        outcome=ql.outcome,
+        best_similarity=round(ql.best_similarity, 4),
+        prompt_tokens=ql.prompt_tokens,
+        completion_tokens=ql.completion_tokens,
+        total_tokens=ql.total_tokens,
+        elapsed_seconds=round(ql.elapsed_seconds, 2),
+        model_id=ql.model_id,
+        sources=sources,
+        feedback=bool(ql.feedback),
+        feedback_at=ql.feedback_at,
+        feedback_comment=ql.feedback_comment,
+    )
 
 
 class AskRequest(BaseModel):

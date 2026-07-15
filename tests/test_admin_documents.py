@@ -91,7 +91,8 @@ def _login(client, login):
 def test_plain_user_denied(ctx):
     client = TestClient(app)
     _login(client, PLAIN)
-    assert client.get("/admin/documents").status_code == 403
+    page = client.get("/admin/documents", follow_redirects=False)
+    assert page.status_code == 303 and "forbidden" in page.headers["location"]
     assert client.get("/api/admin/documents").status_code == 403
 
 
