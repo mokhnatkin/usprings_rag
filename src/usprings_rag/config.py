@@ -8,9 +8,10 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # OpenRouter (LLM)
+    # OpenRouter (LLM). Модель выбрана по A/B (см. open-questions.md), платный
+    # эндпоинт: :free держит общую очередь и часами отдаёт 429.
     openrouter_api_key: str = ""
-    openrouter_model: str = "qwen/qwen3-next-80b-a3b-instruct:free"
+    openrouter_model: str = "qwen/qwen3-next-80b-a3b-instruct"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # База данных (обязательный ключ, без дефолта - падаем при отсутствии)
@@ -25,11 +26,12 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-m3"
     embedding_dim: int = 1024
 
-    # Чанкинг и поиск (стартовые значения, калибруются на прототипе)
+    # Чанкинг и поиск (стартовые значения, калибруются на прототипе).
+    # Порог сходства - НЕ здесь: он свойство коллекции (таблица collections,
+    # читается через collection.py), правится super-admin из UI без деплоя.
     chunk_max_tokens: int = 512
     chunk_overlap: int = 64
     top_k: int = 5
-    similarity_threshold: float = 0.5
 
     # Генерация ответа
     llm_temperature: float = 0.1

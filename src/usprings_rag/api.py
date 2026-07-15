@@ -9,6 +9,11 @@
 одинаково работает на хосте и в контейнере.
 """
 
+# Аннотации как строки (PEP 563): pydantic-модели ссылаются на классы, объявленные
+# ниже (forward-ref list[SourceOut]). Без этого на Python 3.12 (образ) тело класса
+# вычисляется сразу и падает NameError; на 3.14 (dev) аннотации ленивы по умолчанию.
+from __future__ import annotations
+
 import json
 import logging
 import secrets
@@ -54,6 +59,13 @@ from .ingest.pipeline import relative_source_path
 from .llm import create_client
 from .logging_qa import log_query, set_feedback
 from .models import Role, User
+
+# Под uvicorn root-логгер по умолчанию молчит на INFO - диагностика приложения
+# (старт воркера, вердикты ответа, переходы index_job) не попадала бы в
+# `docker compose logs`. Ставим stdout-хендлер и поднимаем INFO только своему
+# логгеру (как в CLI), чужие библиотеки на INFO не шумят.
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s %(message)s")
+logging.getLogger("usprings_rag").setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
