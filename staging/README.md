@@ -17,8 +17,9 @@ RAG-портал (FastAPI + PostgreSQL/pgvector + BGE-m3 + OpenRouter, Docker Co
   Ubuntu 26.04, Docker/Compose, **PostgreSQL 18 на хосте** (порт 5432 занят).
   Docker Hub недоступен → зеркало `mirror.gcr.io`, `ghcr.io` напрямую. За NAT.
   Полный доступ — `IT_strategy_usprings/DevOps/server_access.md`.
-- **Внешний порт `5285`** (зарезервирован; см. корневой `README.md`). По схеме
-  соседей `5281–5284` → host-порт **`8085`**. Внешние порты пробрасывает провайдер
+- **Внешний порт `5285`** (из общего плана портов —
+  `claude_other_docs/usprings_staging_production_plan.md`). По схеме соседей
+  `5281–5284` → host-порт **`8085`**. Внешние порты пробрасывает провайдер
   (DNAT), лид-тайм большой — **запросить проброс `5285`→`8085` заранее**.
 - Размещение и деплой как у соседей: каталог `/home/alex/usprings_rag`, клон по
   **GitLab Deploy Token** (не личный PAT). Обновление — `git fetch` +

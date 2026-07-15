@@ -13,6 +13,24 @@
 не нужен** (полагаемся на портальный логин приложения, как hr/crm/pps);
 **корпус заливаем scp + ingest на сервере**.
 
+## Статус выполнения (2026-07-15)
+
+Деплой выполнен, стенд поднят; ingest и внешний доступ — в процессе.
+
+- [x] Артефакты в `main`: `docker-compose.staging.yml`, `.gitlab-ci.yml`, `ruff` в dev.
+- [x] Репо клонирован на сервер (`/home/alex/usprings_rag`) по Deploy Token.
+- [x] `.env` на сервере (OPENROUTER/SUPERADMIN из dev; свежие SECRET_KEY/POSTGRES_PASSWORD).
+- [x] Образ собран, стек поднят, миграции 0001–0008, super-admin `admin`.
+- [x] BGE-m3 скачан на сервер (HF доступен), app слушает `8085` (локально 303/вход).
+- [x] Корпус залит (erp 413 PDF, zup 194).
+- [~] **Ingest идёт в фоне (детачед)**: `~/usprings_rag/run_ingest.sh` → `ingest.log`,
+  erp затем zup, идемпотентен. Конец — маркер `ALL_INGEST_DONE`.
+- [ ] Локальный smoke (вход + вопрос по erp/zup).
+- [ ] Первый CI-пайплайн на gtl зелёный (lint/test/build).
+- [ ] Внешний DNAT `5285→8085` от провайдера и внешняя проверка.
+- [ ] Финализация docs: раздел про staging в корневом `README.md`/`docs/maintenance.md`,
+  отметка в `CLAUDE.md`.
+
 ## Проверено на сервере (readonly SSH, 2026-07-15)
 
 | Факт | Значение | Вывод для плана |
