@@ -42,6 +42,7 @@ from .collections_service import create_collection, update_collection
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
+from .admin import calibration as admin_calibration
 from .admin import documents as admin_docs
 from .admin import logs as admin_logs
 from .admin import users as admin_users
@@ -672,6 +673,56 @@ def admin_collections_update(
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc))
     return _collection_admin_out(updated)
+
+
+# --- Админка: калибровка порогов (super_admin) ---
+
+
+@app.get("/admin/calibration")
+def admin_calibration_page(request: Request):
+    """Экран калибровки порогов."""
+    return _admin_page_redirect(request, need_super=True) or FileResponse(
+        PACKAGE_DIR / "templates" / "admin" / "calibration.html"
+    )
+
+
+@app.post("/api/admin/calibration/{code}")
+def admin_calibration_start(
+    code: str, user: User = Depends(require_super_admin)
+) -> dict:
+    """Запустить прогон golden-набора коллекции фоновой задачей."""
+    collection = _resolve_collection(code)
+    try:
+        questions = admin_calibration.load_questions(collection.code)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not questions:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Для коллекции {collection.code} нет golden-набора "
+                f"(файл {settings.eval_questions_file}). Добавьте вопросы и повторите."
+            ),
+        )
+    provider = resources.get("provider")
+    if provider is None:
+        raise HTTPException(status_code=503, detail="Модель эмбеддингов не загружена")
+    if not admin_calibration.start_calibration(provider, collection, questions):
+        raise HTTPException(
+            status_code=409, detail="Другая калибровка ещё выполняется"
+        )
+    return {"status": "running", "questions": len(questions)}
+
+
+@app.get("/api/admin/calibration/{code}")
+def admin_calibration_status(
+    code: str, user: User = Depends(require_super_admin)
+) -> dict:
+    """Статус и результат последнего прогона по коллекции."""
+    job = admin_calibration.get_job(_resolve_collection(code).code)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Калибровка не запускалась")
+    return job
 
 
 # --- Админка: просмотр журнала вопросов-ответов (collection_admin, super_admin) ---

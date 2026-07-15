@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Калибровка - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="nav-left">
+      <a href="/">← К вопросам</a>
+      <a href="/admin/documents">Документы</a>
+      <a href="/admin/logs">Журнал</a>
+      <a href="/admin/users">Пользователи</a>
+      <a href="/admin/collections">Коллекции</a>
+      <a href="/admin/calibration">Калибровка</a>
+    </nav>
+    <form method="post" action="/logout"><button type="submit">Выйти</button></form>
+  </div>
+  <main>
+    <h1>Калибровка порога</h1>
+    <p class="subtitle">
+      Прогон golden-набора коллекции: распределения сходств и рекомендованный порог
+      (запас под минимумом релевантных - ложный отказ хуже ложного пропуска).
+      Применённый порог действует в поиске сразу, без перезапуска.
+    </p>
+
+    <p id="notice" class="notice hidden"></p>
+    <p id="error" class="form-error hidden"></p>
+
+    <div class="grid-form">
+      <select id="collection"></select>
+      <button type="button" id="run">Запустить калибровку</button>
+    </div>
+    <p class="meta" id="current"></p>
+    <p class="meta hidden" id="status"></p>
+
+    <section id="report" class="hidden">
+      <h2>Рекомендация</h2>
+      <p id="recommended" class="notice"></p>
+      <ul id="rationale"></ul>
+      <div class="grid-form">
+        <button type="button" id="apply-recommended" class="hidden">Применить рекомендованный</button>
+        <input type="number" id="custom-threshold" step="0.01" min="0" max="1"
+               placeholder="свой порог" style="max-width: 8rem;">
+        <button type="button" id="apply-custom" class="secondary">Применить свой</button>
+      </div>
+
+      <h2>Recall</h2>
+      <p id="recall" class="meta"></p>
+
+      <h2>Распределения лучших сходств</h2>
+      <p id="dist" class="meta"></p>
+
+      <h2>Вопросы прогона</h2>
+      <table class="doc-table">
+        <thead>
+          <tr><th>Тип</th><th>Сходство</th><th>Ранг</th><th>Вопрос</th></tr>
+        </thead>
+        <tbody id="q-rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const collectionSelect = document.getElementById("collection");
+    const runBtn = document.getElementById("run");
+    const statusLine = document.getElementById("status");
+    const currentLine = document.getElementById("current");
+    const notice = document.getElementById("notice");
+    const errorBox = document.getElementById("error");
+    const reportBlock = document.getElementById("report");
+    let collections = [];   // из /api/admin/collections, для текущего порога и PATCH
+    let pollTimer = null;
+    let lastReport = null;
+
+    function flash(el, text) {
+      el.textContent = text;
+      el.classList.remove("hidden");
+    }
+
+    function loadCollections(keep) {
+      return fetch("/api/admin/collections", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((items) => {
+          collections = items.filter((c) => c.is_active);
+          const selected = keep || collectionSelect.value;
+          collectionSelect.replaceChildren();
+          for (const c of collections) {
+            const o = document.createElement("option");
+            o.value = c.code;
+            o.textContent = c.title;
+            collectionSelect.append(o);
+          }
+          if (selected) collectionSelect.value = selected;
+          showCurrent();
+        });
+    }
+
+    function selectedCollection() {
+      return collections.find((c) => c.code === collectionSelect.value);
+    }
+
+    function showCurrent() {
+      const c = selectedCollection();
+      currentLine.textContent = c ? `Текущий порог «${c.title}»: ${c.threshold}` : "";
+    }
+
+    collectionSelect.addEventListener("change", () => {
+      showCurrent();
+      reportBlock.classList.add("hidden");
+      statusLine.classList.add("hidden");
+      checkStatus();  // показать прошлый результат, если прогон уже был
+    });
+
+    runBtn.addEventListener("click", () => {
+      errorBox.classList.add("hidden");
+      notice.classList.add("hidden");
+      runBtn.disabled = true;
+      fetch(`/api/admin/calibration/${encodeURIComponent(collectionSelect.value)}`, { method: "POST" })
+        .then((r) => {
+          if (!r.ok) return r.json().then((e) => { throw new Error(e.detail || "Ошибка"); });
+          return r.json();
+        })
+        .then((data) => {
+          flash(statusLine, `Прогон запущен (${data.questions} вопросов)...`);
+          poll();
+        })
+        .catch((err) => {
+          runBtn.disabled = false;
+          flash(errorBox, err.message);
+        });
+    });
+
+    function poll() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(checkStatus, 2000);
+    }
+
+    function checkStatus() {
+      fetch(`/api/admin/calibration/${encodeURIComponent(collectionSelect.value)}`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((job) => {
+          if (!job) return;
+          if (job.status === "running") {
+            flash(statusLine, "Прогон выполняется...");
+            return;
+          }
+          if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+          runBtn.disabled = false;
+          if (job.status === "error") {
+            statusLine.classList.add("hidden");
+            flash(errorBox, `Прогон упал: ${job.error}`);
+            return;
+          }
+          flash(statusLine, `Прогон завершён за ${job.elapsed_seconds} с.`);
+          render(job.result);
+        });
+    }
+
+    function render(report) {
+      lastReport = report;
+      reportBlock.classList.remove("hidden");
+
+      const rec = document.getElementById("recommended");
+      const applyRec = document.getElementById("apply-recommended");
+      if (report.recommended !== null) {
+        rec.textContent =
+          `Рекомендованный порог: ${report.recommended.toFixed(2)} ` +
+          `(текущий: ${report.current_threshold})`;
+        applyRec.textContent = `Применить рекомендованный (${report.recommended.toFixed(2)})`;
+        applyRec.classList.remove("hidden");
+      } else {
+        rec.textContent = "Рекомендация не рассчитана - см. обоснование.";
+        applyRec.classList.add("hidden");
+      }
+
+      const rationale = document.getElementById("rationale");
+      rationale.replaceChildren();
+      for (const line of report.rationale) {
+        const li = document.createElement("li");
+        li.textContent = line;
+        rationale.append(li);
+      }
+
+      const recallParts = [];
+      for (const kind of ["covered", "paraphrased"]) {
+        const r = report.recall[kind];
+        if (r) recallParts.push(
+          `${kind}: recall@1 = ${r.at_1}/${r.total}, recall@${report.top_k} = ${r.at_k}/${r.total}`);
+      }
+      document.getElementById("recall").textContent = recallParts.join(" | ");
+
+      const fmt = (values) => values.map((v) => v.toFixed(3)).join(", ");
+      document.getElementById("dist").textContent =
+        `relevant (${report.relevant.count}): min=${report.relevant.min?.toFixed(4)} ` +
+        `max=${report.relevant.max?.toFixed(4)} [${fmt(report.relevant.values)}] | ` +
+        `irrelevant (${report.irrelevant.count}): min=${report.irrelevant.min?.toFixed(4)} ` +
+        `max=${report.irrelevant.max?.toFixed(4)} [${fmt(report.irrelevant.values)}]` +
+        (report.gap !== null ? ` | зазор: ${report.gap.toFixed(4)}` : "");
+
+      const rows = document.getElementById("q-rows");
+      rows.replaceChildren();
+      for (const q of report.questions) {
+        const tr = document.createElement("tr");
+        for (const value of [
+          q.kind, q.best.toFixed(4),
+          q.expected ? (q.rank ? `#${q.rank}` : "MISS") : "—", q.q,
+        ]) {
+          const td = document.createElement("td");
+          td.textContent = value;
+          tr.append(td);
+        }
+        if (q.expected && q.rank !== 1) tr.classList.add("archived");
+        rows.append(tr);
+      }
+    }
+
+    function applyThreshold(value) {
+      const c = selectedCollection();
+      if (!c || !(value > 0 && value < 1)) {
+        flash(errorBox, "Порог должен быть числом между 0 и 1.");
+        return;
+      }
+      errorBox.classList.add("hidden");
+      fetch(`/api/admin/collections/${c.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: c.title, threshold: value, is_active: c.is_active }),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error("Не удалось сохранить порог");
+          flash(notice, `Порог «${c.title}» = ${value} сохранён и уже действует в поиске.`);
+          return loadCollections(c.code);
+        })
+        .catch((err) => flash(errorBox, err.message));
+    }
+
+    document.getElementById("apply-recommended").addEventListener("click", () => {
+      if (lastReport && lastReport.recommended !== null) applyThreshold(lastReport.recommended);
+    });
+    document.getElementById("apply-custom").addEventListener("click", () => {
+      applyThreshold(parseFloat(document.getElementById("custom-threshold").value));
+    });
+
+    loadCollections().then(checkStatus);
+  </script>
+</body>
+</html>

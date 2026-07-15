@@ -53,6 +53,7 @@ fetch("/api/me")
     if (me.role === "super_admin") {
       document.getElementById("nav-users").classList.remove("hidden");
       document.getElementById("nav-collections").classList.remove("hidden");
+      document.getElementById("nav-calibration").classList.remove("hidden");
     }
   });
 

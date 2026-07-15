@@ -22,6 +22,8 @@ RUN pip install .
 
 COPY alembic.ini ./
 COPY alembic ./alembic
+# Golden-наборы вопросов - нужны калибровке порогов из UI (этап 9 MVP1).
+COPY eval ./eval
 
 EXPOSE 8000
 

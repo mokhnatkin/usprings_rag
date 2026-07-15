@@ -53,5 +53,8 @@ class Settings(BaseSettings):
     # можно на инстансах, которые только отвечают и не должны индексировать.
     index_worker_enabled: bool = True
 
+    # Golden-набор вопросов для калибровки порогов (относительно рабочей папки).
+    eval_questions_file: str = "eval/questions.yaml"
+
 
 settings = Settings()
