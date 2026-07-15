@@ -40,7 +40,7 @@ from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
 from .llm import create_client
-from .logging_qa import log_query
+from .logging_qa import log_query, set_feedback
 from .models import User
 
 logger = logging.getLogger(__name__)
@@ -149,6 +149,23 @@ def profile_change_password(
     )
 
 
+class FeedbackRequest(BaseModel):
+    log_id: int
+    comment: str | None = None
+
+
+@app.post("/feedback")
+def feedback(
+    request: FeedbackRequest, user: User = Depends(get_current_user)
+) -> dict:
+    """Пометить свой ответ неверным (+опциональный комментарий)."""
+    with SessionLocal() as session:
+        ok = set_feedback(session, user.id, request.log_id, request.comment)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    return {"ok": True}
+
+
 class CollectionOut(BaseModel):
     code: str
     title: str
@@ -193,6 +210,7 @@ class AskResponse(BaseModel):
     sources: list[SourceOut]
     best_similarity: float
     elapsed_seconds: float
+    log_id: int | None = None  # id записи лога - для отметки «ответ неверный»
 
 
 @app.post("/ask", response_model=AskResponse)
@@ -222,7 +240,7 @@ def ask(request: AskRequest, user: User = Depends(get_current_user)) -> AskRespo
                     "Повторите вопрос через минуту."
                 ),
             )
-        log_query(session, user.id, collection, request.question, result)
+        log_id = log_query(session, user.id, collection, request.question, result)
     return AskResponse(
         answer=result.text,
         refused=result.refused,
@@ -230,6 +248,7 @@ def ask(request: AskRequest, user: User = Depends(get_current_user)) -> AskRespo
         sources=[SourceOut(**vars(source)) for source in result.sources],
         best_similarity=round(result.best_similarity, 4),
         elapsed_seconds=round(result.elapsed_seconds, 2),
+        log_id=log_id,
     )
 
 
@@ -272,6 +291,14 @@ def ask_stream(
                         parts.append(payload)
                         yield _sse({"type": "delta", "text": payload})
                     else:
+                        # текст ответа при стриме ушёл дельтами (payload.text пуст),
+                        # для лога собираем его из накопленных кусков; у отказа -
+                        # payload.text (дельт не было). Логируем до события done,
+                        # чтобы вложить log_id для отметки «ответ неверный».
+                        full = "".join(parts) if parts else payload.text
+                        log_id = log_query(
+                            session, user.id, selected, question, payload, answer_text=full
+                        )
                         yield _sse(
                             {
                                 "type": "done",
@@ -281,14 +308,8 @@ def ask_stream(
                                 "sources": [vars(s) for s in payload.sources],
                                 "best_similarity": round(payload.best_similarity, 4),
                                 "elapsed_seconds": round(payload.elapsed_seconds, 2),
+                                "log_id": log_id,
                             }
-                        )
-                        # текст ответа при стриме ушёл дельтами (payload.text пуст),
-                        # для лога собираем его из накопленных кусков; у отказа -
-                        # payload.text (дельт не было).
-                        full = "".join(parts) if parts else payload.text
-                        log_query(
-                            session, user.id, selected, question, payload, answer_text=full
                         )
             except RateLimitError:
                 logger.warning("LLM rate limit (429) - бесплатный тир OpenRouter занят")

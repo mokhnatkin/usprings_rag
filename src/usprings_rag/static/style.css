@@ -175,4 +175,12 @@ h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
   color: var(--muted);
 }
 
+.feedback { margin-top: 0.75rem; }
+
+.feedback button { padding: 0.4rem 1rem; font-size: 0.85rem; }
+
+#feedback-comment { margin: 0.5rem 0; }
+
+.feedback-done { font-size: 0.9rem; color: #256029; }
+
 .hidden { display: none; }

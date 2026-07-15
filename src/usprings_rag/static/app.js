@@ -9,8 +9,15 @@ const answerBlock = document.getElementById("answer");
 const sourcesBlock = document.getElementById("sources-block");
 const sourcesList = document.getElementById("sources");
 const metaBlock = document.getElementById("meta");
+const feedbackBlock = document.getElementById("feedback");
+const feedbackBtn = document.getElementById("feedback-btn");
+const feedbackForm = document.getElementById("feedback-form");
+const feedbackComment = document.getElementById("feedback-comment");
+const feedbackSend = document.getElementById("feedback-send");
+const feedbackDone = document.getElementById("feedback-done");
 
 let stream = null;
+let currentLogId = null;
 
 // Список коллекций - с сервера: справочник один и тот же для поиска и для UI.
 // Первая в списке (1С:ERP) выбрана по умолчанию - основная база пилота.
@@ -105,7 +112,43 @@ function finish(data) {
   metaBlock.textContent =
     `база: ${data.collection} | сходство: ${data.best_similarity} ` +
     `| время: ${data.elapsed_seconds} с`;
+
+  resetFeedback(data.log_id);
 }
+
+function resetFeedback(logId) {
+  currentLogId = logId ?? null;
+  feedbackForm.classList.add("hidden");
+  feedbackDone.classList.add("hidden");
+  feedbackComment.value = "";
+  // Отмечать можно, только если запись лога создалась (есть её id).
+  feedbackBtn.classList.toggle("hidden", currentLogId === null);
+  feedbackBlock.classList.toggle("hidden", currentLogId === null);
+}
+
+feedbackBtn.addEventListener("click", () => {
+  feedbackBtn.classList.add("hidden");
+  feedbackForm.classList.remove("hidden");
+  feedbackComment.focus();
+});
+
+feedbackSend.addEventListener("click", () => {
+  if (currentLogId === null) return;
+  feedbackSend.disabled = true;
+  fetch("/feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ log_id: currentLogId, comment: feedbackComment.value.trim() || null }),
+  })
+    .then((response) => {
+      feedbackSend.disabled = false;
+      feedbackForm.classList.add("hidden");
+      feedbackDone.classList.remove("hidden");
+    })
+    .catch(() => {
+      feedbackSend.disabled = false;
+    });
+});
 
 function fail(message) {
   closeStream();
