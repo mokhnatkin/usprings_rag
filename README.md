@@ -164,5 +164,5 @@ uv run --no-sync python eval/run_ab.py <модель-A> <модель-B>        
 
 - Источник правды (`origin`): GitLab - https://gtl.usteel.ru/usprings/usprings_rag
 - Бэкап-зеркало: GitHub - https://github.com/mokhnatkin/usprings_rag.git
-  (репо ещё не создан; push-mirror настраивается по общему плану УПЗ)
+  (создан; GitLab push-mirror активен - GitHub синхронизируется автоматически)
 - Ветка: `main`.
