@@ -140,6 +140,12 @@ uv run --no-sync python eval/run_ab.py <модель-A> <модель-B>        
   проверить незавершившиеся процессы:
   `Get-Process | Where-Object { $_.Path -like "*usprings_rag*" } | Stop-Process -Force`,
   затем `uv pip install -e . --no-deps` (перегенерирует консольные скрипты).
+- **Локальный Python новее, чем в образе (3.14 против `python:3.12-slim`).** Тесты на
+  dev могут проходить, а образ падать: напр. forward-ref в аннотациях требует
+  `from __future__ import annotations` на 3.12 (на 3.14 ленивы по умолчанию). После
+  правок, влияющих на импорт/аннотации, проверять импорт в контейнере
+  (`docker compose build app && docker compose run --rm --no-deps --entrypoint sh app
+  -c "python -c 'import usprings_rag.api'"`). Подробнее - `docs/maintenance.md`, раздел 9.
 
 ## Документация
 
