@@ -277,6 +277,57 @@ h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
   font-size: 0.9rem;
 }
 
+/* Аналитика: карточки-итоги. */
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.card {
+  flex: 1 1 8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fbfbfd;
+}
+
+.card-value { font-size: 1.5rem; font-weight: 600; color: var(--text); }
+
+.card-label { font-size: 0.8rem; color: var(--muted); }
+
+/* Аналитика: минимальные бар-чарты (без внешних библиотек). */
+.bars { margin: 0.25rem 0 0.5rem; }
+
+.bar-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.15rem 0; }
+
+.bar-label {
+  flex: 0 0 2.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.bar-track {
+  flex: 1 1 auto;
+  height: 0.85rem;
+  background: #eef0f4;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill { display: block; height: 100%; background: var(--accent); }
+
+.bar-value {
+  flex: 0 0 2.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 /* Панель выдачи доступа к коллекциям. */
 .access-panel { padding: 0.5rem 0; }
 

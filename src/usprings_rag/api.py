@@ -42,6 +42,7 @@ from .collections_service import create_collection, update_collection
 from .config import settings
 from .db import SessionLocal
 from .embeddings import BGEEmbeddingProvider
+from .admin import analytics as admin_analytics
 from .admin import calibration as admin_calibration
 from .admin import documents as admin_docs
 from .admin import logs as admin_logs
@@ -879,6 +880,36 @@ def admin_logs_entry(
         feedback_at=ql.feedback_at,
         feedback_comment=ql.feedback_comment,
     )
+
+
+# --- Админка: аналитика (collection_admin, super_admin) ---
+
+
+@app.get("/admin/analytics")
+def admin_analytics_page(request: Request):
+    """Экран аналитики (агрегаты поверх журнала)."""
+    return _admin_page_redirect(request, need_super=False) or FileResponse(
+        PACKAGE_DIR / "templates" / "admin" / "analytics.html"
+    )
+
+
+@app.get("/api/admin/analytics")
+def admin_analytics_data(
+    collection: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    user: User = Depends(require_admin),
+) -> dict:
+    """Агрегаты по правам и фильтрам. super-admin получает срез по пользователям."""
+    df = _parse_day(date_from)
+    dt = _parse_day(date_to, end=True)
+    collection_id = _resolve_collection(collection).id if collection else None
+    per_user = user.role == Role.SUPER_ADMIN
+    with SessionLocal() as session:
+        allowed = _log_allowed_ids(session, user)
+        return admin_analytics.compute(
+            session, allowed, collection_id, df, dt, per_user=per_user
+        )
 
 
 class AskRequest(BaseModel):

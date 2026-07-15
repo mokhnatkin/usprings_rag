@@ -49,6 +49,7 @@ fetch("/api/me")
     if (admin) {
       document.getElementById("nav-documents").classList.remove("hidden");
       document.getElementById("nav-logs").classList.remove("hidden");
+      document.getElementById("nav-analytics").classList.remove("hidden");
     }
     if (me.role === "super_admin") {
       document.getElementById("nav-users").classList.remove("hidden");

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Аналитика - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="nav-left">
+      <a href="/">← К вопросам</a>
+      <a href="/admin/documents">Документы</a>
+      <a href="/admin/logs">Журнал</a>
+      <a href="/admin/analytics">Аналитика</a>
+      <a href="/admin/users" class="su-only hidden">Пользователи</a>
+      <a href="/admin/collections" class="su-only hidden">Коллекции</a>
+      <a href="/admin/calibration" class="su-only hidden">Калибровка</a>
+    </nav>
+    <form method="post" action="/logout"><button type="submit">Выйти</button></form>
+  </div>
+  <main>
+    <h1>Аналитика</h1>
+    <p class="subtitle">
+      Агрегаты по журналу вопросов-ответов. Super-admin видит весь портал и срез по
+      пользователям, администратор коллекций - только свои коллекции.
+    </p>
+
+    <form id="filters" class="grid-form">
+      <select id="f-collection"><option value="">Все коллекции</option></select>
+      <input type="date" id="f-from" title="с даты">
+      <input type="date" id="f-to" title="по дату">
+      <button type="submit">Применить</button>
+    </form>
+
+    <p id="empty" class="meta hidden">За выбранный период записей нет.</p>
+
+    <section id="cards" class="cards hidden">
+      <div class="card"><span class="card-value" id="c-total"></span><span class="card-label">запросов</span></div>
+      <div class="card"><span class="card-value" id="c-refused"></span><span class="card-label">доля отказов</span></div>
+      <div class="card"><span class="card-value" id="c-feedback"></span><span class="card-label">помечено неверными</span></div>
+      <div class="card"><span class="card-value" id="c-tokens"></span><span class="card-label">токенов всего</span></div>
+    </section>
+
+    <section id="charts" class="hidden">
+      <h2>Активность по дням недели</h2>
+      <div id="weekday-chart" class="bars"></div>
+
+      <h2>Активность по часам суток</h2>
+      <div id="hour-chart" class="bars"></div>
+
+      <h2>Топ вопросов</h2>
+      <table class="doc-table">
+        <thead><tr><th>Вопрос</th><th>Задан</th><th>Отказов</th></tr></thead>
+        <tbody id="top-rows"></tbody>
+      </table>
+
+      <div id="users-block" class="hidden">
+        <h2>По пользователям</h2>
+        <table class="doc-table">
+          <thead><tr><th>Пользователь</th><th>Запросов</th><th>Токенов</th><th>Отказов</th></tr></thead>
+          <tbody id="user-rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    fetch("/api/me").then((r) => r.json()).then((me) => {
+      if (me.role === "super_admin")
+        document.querySelectorAll(".su-only").forEach((el) => el.classList.remove("hidden"));
+    });
+
+    const cards = document.getElementById("cards");
+    const charts = document.getElementById("charts");
+    const empty = document.getElementById("empty");
+
+    fetch("/collections")
+      .then((r) => r.json())
+      .then((items) => {
+        const sel = document.getElementById("f-collection");
+        for (const c of items) {
+          const o = document.createElement("option");
+          o.value = c.code;
+          o.textContent = c.title;
+          sel.append(o);
+        }
+      });
+
+    document.getElementById("filters").addEventListener("submit", (e) => {
+      e.preventDefault();
+      load();
+    });
+
+    function load() {
+      const params = new URLSearchParams();
+      const coll = document.getElementById("f-collection").value;
+      const from = document.getElementById("f-from").value;
+      const to = document.getElementById("f-to").value;
+      if (coll) params.set("collection", coll);
+      if (from) params.set("date_from", from);
+      if (to) params.set("date_to", to);
+
+      fetch(`/api/admin/analytics?${params}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then(render);
+    }
+
+    function pct(x) {
+      return `${(x * 100).toFixed(1)}%`;
+    }
+
+    function render(data) {
+      const s = data.summary;
+      const hasData = s.total > 0;
+      empty.classList.toggle("hidden", hasData);
+      cards.classList.toggle("hidden", !hasData);
+      charts.classList.toggle("hidden", !hasData);
+      if (!hasData) return;
+
+      document.getElementById("c-total").textContent = s.total;
+      document.getElementById("c-refused").textContent = pct(s.refused_share);
+      document.getElementById("c-feedback").textContent = pct(s.feedback_share);
+      document.getElementById("c-tokens").textContent = s.tokens_total.toLocaleString("ru-RU");
+
+      drawBars("weekday-chart", data.by_weekday.map((b) => ({ label: b.label, count: b.count })));
+      drawBars("hour-chart", data.by_hour.map((b) => ({ label: String(b.hour), count: b.count })));
+
+      const top = document.getElementById("top-rows");
+      top.replaceChildren();
+      for (const q of data.top_questions) {
+        const tr = document.createElement("tr");
+        for (const v of [q.question, q.count, q.refused]) {
+          const td = document.createElement("td");
+          td.textContent = v;
+          tr.append(td);
+        }
+        if (q.refused > 0) tr.classList.add("archived");
+        top.append(tr);
+      }
+
+      const usersBlock = document.getElementById("users-block");
+      if (data.by_user) {
+        usersBlock.classList.remove("hidden");
+        const rows = document.getElementById("user-rows");
+        rows.replaceChildren();
+        for (const u of data.by_user) {
+          const tr = document.createElement("tr");
+          for (const v of [u.user_login, u.count, u.tokens.toLocaleString("ru-RU"), u.refused]) {
+            const td = document.createElement("td");
+            td.textContent = v;
+            tr.append(td);
+          }
+          rows.append(tr);
+        }
+      } else {
+        usersBlock.classList.add("hidden");
+      }
+    }
+
+    // Минимальный бар-чарт без внешних библиотек: строка = подпись + полоса + число.
+    function drawBars(id, items) {
+      const container = document.getElementById(id);
+      container.replaceChildren();
+      const max = Math.max(1, ...items.map((i) => i.count));
+      for (const item of items) {
+        const row = document.createElement("div");
+        row.className = "bar-row";
+
+        const label = document.createElement("span");
+        label.className = "bar-label";
+        label.textContent = item.label;
+
+        const track = document.createElement("span");
+        track.className = "bar-track";
+        const fill = document.createElement("span");
+        fill.className = "bar-fill";
+        fill.style.width = `${(item.count / max) * 100}%`;
+        track.append(fill);
+
+        const value = document.createElement("span");
+        value.className = "bar-value";
+        value.textContent = item.count;
+
+        row.append(label, track, value);
+        container.append(row);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
