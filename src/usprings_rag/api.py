@@ -25,8 +25,11 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .answer import answer_question, stream_answer
 from .auth import (
+    accessible_codes,
     authenticate,
     bootstrap_super_admin,
+    change_password,
+    check_collection_access,
     current_user_or_none,
     get_current_user,
     login_user,
@@ -125,6 +128,26 @@ def logout(request: Request):
     return RedirectResponse("/login", status_code=303)
 
 
+@app.get("/profile")
+def profile_page(user: User = Depends(get_current_user)) -> FileResponse:
+    """Профиль: смена своего пароля."""
+    return FileResponse(PACKAGE_DIR / "templates" / "profile.html")
+
+
+@app.post("/profile/password")
+def profile_change_password(
+    old_password: str = Form(...),
+    new_password: str = Form(...),
+    user: User = Depends(get_current_user),
+):
+    """Сменить свой пароль (нужен верный старый)."""
+    with SessionLocal() as session:
+        ok = change_password(session, user.id, old_password, new_password)
+    return RedirectResponse(
+        "/profile?changed=1" if ok else "/profile?error=1", status_code=303
+    )
+
+
 class CollectionOut(BaseModel):
     code: str
     title: str
@@ -132,13 +155,13 @@ class CollectionOut(BaseModel):
 
 @app.get("/collections", response_model=list[CollectionOut])
 def collections(user: User = Depends(get_current_user)) -> list[CollectionOut]:
-    """Коллекции для селектора в UI - из того же справочника, что и поиск.
-
-    В этапе 3 (RBAC) список будет фильтроваться по доступу пользователя.
-    """
+    """Коллекции, доступные пользователю (super_admin - все активные)."""
+    with SessionLocal() as session:
+        codes = accessible_codes(session, user)
     return [
         CollectionOut(code=item.code, title=item.title)
         for item in list_collections()
+        if item.code in codes
     ]
 
 
@@ -180,6 +203,7 @@ def ask(request: AskRequest, user: User = Depends(get_current_user)) -> AskRespo
     """
     collection = _resolve_collection(request.collection)
     with SessionLocal() as session:
+        check_collection_access(session, user, collection.code)
         try:
             result = answer_question(
                 session,
@@ -227,6 +251,9 @@ def ask_stream(
     GET (а не POST) - чтобы на клиенте работал штатный EventSource.
     """
     selected = _resolve_collection(collection)
+    # Доступ проверяем до начала стрима: 403 отдаём обычным ответом, не в SSE.
+    with SessionLocal() as session:
+        check_collection_access(session, user, selected.code)
 
     def events() -> Iterator[str]:
         with SessionLocal() as session:

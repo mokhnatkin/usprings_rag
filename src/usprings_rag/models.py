@@ -51,6 +51,24 @@ class User(Base):
     )
 
 
+class UserCollectionAccess(Base):
+    """Доступ пользователя к коллекции.
+
+    Для роли USER - право задавать вопросы; для COLLECTION_ADMIN - право
+    администрировать коллекцию (и спрашивать по ней). SUPER_ADMIN грантов не
+    требует (видит всё). Составной PK (user_id, collection_id) - без дублей.
+    """
+
+    __tablename__ = "user_collection_access"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    collection_id: Mapped[int] = mapped_column(
+        ForeignKey("collections.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
 class CollectionRow(Base):
     """Справочник коллекций (баз знаний) - источник истины вместо enum.
 

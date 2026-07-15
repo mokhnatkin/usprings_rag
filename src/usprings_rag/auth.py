@@ -11,9 +11,10 @@ from fastapi import HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .collection import list_collections
 from .config import settings
 from .db import SessionLocal
-from .models import Role, User
+from .models import CollectionRow, Role, User, UserCollectionAccess
 from .security import hash_password, verify_password
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,52 @@ def get_current_user(request: Request) -> User:
     if user is None:
         raise HTTPException(status_code=401, detail="Требуется авторизация")
     return user
+
+
+def accessible_codes(session: Session, user: User) -> set[str]:
+    """Коды коллекций, доступных пользователю. super_admin - все активные."""
+    if user.role == Role.SUPER_ADMIN:
+        return {c.code for c in list_collections(active_only=True)}
+    codes = session.scalars(
+        select(CollectionRow.code)
+        .join(
+            UserCollectionAccess,
+            UserCollectionAccess.collection_id == CollectionRow.id,
+        )
+        .where(
+            UserCollectionAccess.user_id == user.id,
+            CollectionRow.is_active.is_(True),
+        )
+    ).all()
+    return set(codes)
+
+
+def check_collection_access(
+    session: Session, user: User, code: str, need_admin: bool = False
+) -> None:
+    """Проверить доступ к коллекции, иначе 403.
+
+    `need_admin=True` дополнительно требует роль администратора (collection_admin
+    или super_admin) - для управляющих операций. super_admin проходит всё.
+    """
+    if need_admin and user.role not in (Role.COLLECTION_ADMIN, Role.SUPER_ADMIN):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    if user.role == Role.SUPER_ADMIN:
+        return
+    if code not in accessible_codes(session, user):
+        raise HTTPException(status_code=403, detail="Нет доступа к этой коллекции")
+
+
+def change_password(
+    session: Session, user_id: int, old_password: str, new_password: str
+) -> bool:
+    """Сменить пароль по проверке старого. False - старый неверен или нет учётки."""
+    user = session.get(User, user_id)
+    if user is None or not verify_password(old_password, user.password_hash):
+        return False
+    user.password_hash = hash_password(new_password)
+    session.commit()
+    return True
 
 
 def bootstrap_super_admin(session: Session) -> None:

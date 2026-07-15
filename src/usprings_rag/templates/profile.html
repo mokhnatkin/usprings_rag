@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Профиль - База знаний УПЗ</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">← К вопросам</a>
+    <form method="post" action="/logout">
+      <button type="submit">Выйти</button>
+    </form>
+  </div>
+  <main>
+    <h1>Смена пароля</h1>
+    <p class="subtitle">Введите текущий пароль и новый.</p>
+
+    <p id="ok" class="form-error hidden" style="color:#256029;border-color:#8fca8f;background:#eef8ee;">
+      Пароль изменён.
+    </p>
+    <p id="error" class="form-error hidden">Текущий пароль неверен.</p>
+
+    <form method="post" action="/profile/password">
+      <label class="field" for="old_password">Текущий пароль</label>
+      <input type="password" id="old_password" name="old_password" autocomplete="current-password" required autofocus>
+
+      <label class="field" for="new_password">Новый пароль</label>
+      <input type="password" id="new_password" name="new_password" autocomplete="new-password" required>
+
+      <div class="actions">
+        <button type="submit">Сменить пароль</button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    if (params.has("changed")) document.getElementById("ok").classList.remove("hidden");
+    if (params.has("error")) document.getElementById("error").classList.remove("hidden");
+  </script>
+</body>
+</html>
