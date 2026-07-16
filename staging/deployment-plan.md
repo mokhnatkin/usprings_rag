@@ -23,9 +23,16 @@
 - [x] Образ собран, стек поднят, миграции 0001–0008, super-admin `admin`.
 - [x] BGE-m3 скачан на сервер (HF доступен), app слушает `8085` (локально 303/вход).
 - [x] Корпус залит (erp 413 PDF, zup 194).
-- [~] **Ingest идёт в фоне (детачед)**: `~/usprings_rag/run_ingest.sh` → `ingest.log`,
-  erp затем zup, идемпотентен. Конец — маркер `ALL_INGEST_DONE`.
-- [ ] Локальный smoke (вход + вопрос по erp/zup).
+- [x] **Ingest завершён**: erp 413/413, zup 194/194 документов (`ALL_INGEST_DONE`).
+- [~] Локальный smoke: вход super-admin `admin` — OK, `/collections` (erp,zup) — OK,
+  **ретрив работает** (находит чанки выше порога, доходит до LLM). НО ответ падает.
+- [ ] **БЛОКЕР: исходящий доступ к OpenRouter закрыт сетевой политикой.**
+  С сервера `https://openrouter.ai` → `403 {"success":false,"error":"Access denied
+  by security policy."}` (так же закрыт `api.github.com`; `huggingface.co` и
+  `google.com` — открыты). Это egress-фильтр сети УПЗ, не приложение и не ключ.
+  **Нужно: попросить ИТ/провайдера внести `openrouter.ai` в белый список исходящих
+  HTTPS для сервера** (тем же каналом, что и запрос DNAT). Пока не открыт — генерация
+  ответа LLM не работает (retrieval, портал, история, админка — работают).
 - [ ] Первый CI-пайплайн на gtl зелёный (lint/test/build).
 - [ ] Внешний DNAT `5285→8085` от провайдера и внешняя проверка.
 - [ ] Финализация docs: раздел про staging в корневом `README.md`/`docs/maintenance.md`,
