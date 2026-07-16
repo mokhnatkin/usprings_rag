@@ -146,6 +146,23 @@ uv run --no-sync python eval/run_ab.py <модель-A> <модель-B>        
   `docker compose build app && docker compose run --rm --no-deps --entrypoint sh app
   -c "python -c 'import usprings_rag.api'"`. Подробнее - `docs/maintenance.md`, раздел 9.
 
+## Staging (тестовый стенд)
+
+Развёрнут на общей тестовой машине УПЗ `195.239.217.102` (2026-07-15): каталог
+`/home/alex/usprings_rag`, стек `docker-compose.staging.yml` (host-порт **8085**,
+внешний `http://195.239.217.102:5285` через DNAT провайдера). Корпус ERP+ЗУП
+проиндексирован (413 и 194 документа). Обновление - `git fetch --prune origin &&
+git reset --hard origin/main && docker compose -f docker-compose.staging.yml up -d --build`
+(секреты - только в gitignored `.env`, tracked-файлы на сервере не править).
+
+**Известное ограничение:** исходящий доступ к `openrouter.ai` закрыт egress-политикой
+сети УПЗ (`403 Access denied by security policy`) - до внесения домена в белый список
+**ответы LLM не работают** (портал, вход, поиск и админка работают). Заявка в
+ИТ/провайдер отправлена вместе с DNAT `5285→8085`.
+
+Детали и runbook - [`staging/deployment-plan.md`](staging/deployment-plan.md) и
+[`staging/README.md`](staging/README.md); эксплуатация - `docs/maintenance.md`, раздел 10.
+
 ## Документация
 
 Проектная документация - в каталоге [`docs/`](docs/):
