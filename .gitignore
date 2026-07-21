@@ -34,6 +34,9 @@ docs/1C_parsing/1C_portal_credentials.txt
 # GitLab Deploy Token для клона на staging (секрет)
 staging/gitlab_deploy_token.md
 
+# Учётки портала на staging (секрет)
+staging/staging_users.txt
+
 # Рабочие файлы пакетного парсинга ИТС (HTML и картинки до сборки PDF)
 docs/1C_parsing/work/
 

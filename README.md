@@ -155,10 +155,9 @@ uv run --no-sync python eval/run_ab.py <модель-A> <модель-B>        
 git reset --hard origin/main && docker compose -f docker-compose.staging.yml up -d --build`
 (секреты - только в gitignored `.env`, tracked-файлы на сервере не править).
 
-**Известное ограничение:** исходящий доступ к `openrouter.ai` закрыт egress-политикой
-сети УПЗ (`403 Access denied by security policy`) - до внесения домена в белый список
-**ответы LLM не работают** (портал, вход, поиск и админка работают). Заявка в
-ИТ/провайдер отправлена вместе с DNAT `5285→8085`.
+Стенд работоспособен полностью (проверено 2026-07-21): исходящий доступ к
+`openrouter.ai` открыт по заявке в ИТ/провайдер, генерация ответов LLM работает;
+внешний DNAT `5285→8085` заведён, портал доступен снаружи.
 
 Детали и runbook - [`staging/deployment-plan.md`](staging/deployment-plan.md) и
 [`staging/README.md`](staging/README.md); эксплуатация - `docs/maintenance.md`, раздел 10.

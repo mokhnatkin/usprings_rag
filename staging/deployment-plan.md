@@ -13,9 +13,10 @@
 не нужен** (полагаемся на портальный логин приложения, как hr/crm/pps);
 **корпус заливаем scp + ingest на сервере**.
 
-## Статус выполнения (2026-07-15)
+## Статус выполнения (обновлено 2026-07-21)
 
-Деплой выполнен, стенд поднят; ingest и внешний доступ — в процессе.
+Деплой выполнен, стенд поднят и работоспособен целиком; остаётся только первый
+зелёный CI-пайплайн.
 
 - [x] Артефакты в `main`: `docker-compose.staging.yml`, `.gitlab-ci.yml`, `ruff` в dev.
 - [x] Репо клонирован на сервер (`/home/alex/usprings_rag`) по Deploy Token.
@@ -24,18 +25,16 @@
 - [x] BGE-m3 скачан на сервер (HF доступен), app слушает `8085` (локально 303/вход).
 - [x] Корпус залит (erp 413 PDF, zup 194).
 - [x] **Ingest завершён**: erp 413/413, zup 194/194 документов (`ALL_INGEST_DONE`).
-- [~] Локальный smoke: вход super-admin `admin` — OK, `/collections` (erp,zup) — OK,
-  **ретрив работает** (находит чанки выше порога, доходит до LLM). НО ответ падает.
-- [~] **БЛОКЕР: исходящий доступ к OpenRouter закрыт сетевой политикой.**
-  С сервера `https://openrouter.ai` → `403 {"success":false,"error":"Access denied
-  by security policy."}` (так же закрыт `api.github.com`; `huggingface.co` и
-  `google.com` — открыты). Это egress-фильтр сети УПЗ, не приложение и не ключ.
-  **Заявка провайдеру отправлена 2026-07-15** (whitelist egress `openrouter.ai`).
-  Пока не открыт — генерация ответа LLM не работает (retrieval, портал, история,
-  админка — работают). Проверка после открытия: `curl -I
-  https://openrouter.ai/api/v1/models` с сервера → 200/401.
+- [x] Локальный smoke: вход super-admin `admin` — OK, `/collections` (erp,zup) — OK,
+  **ретрив работает** (находит чанки выше порога, доходит до LLM).
+- [x] **Egress к OpenRouter открыт (проверено 2026-07-21).** Заявка от 2026-07-15
+  закрыта: с хоста и изнутри контейнера `curl -o /dev/null -w '%{http_code}'
+  https://openrouter.ai/api/v1/models` → `200` (было `403 "Access denied by security
+  policy"`). Боевой `POST /api/v1/chat/completions` с ключом из `.env` → `200`, модель
+  `qwen/qwen3-next-80b-a3b-instruct` отвечает. Генерация ответов LLM работает.
 - [ ] Первый CI-пайплайн на gtl зелёный (lint/test/build).
-- [~] Внешний DNAT `5285→8085` — **заявка провайдеру отправлена 2026-07-15**; ждём.
+- [x] Внешний DNAT `5285→8085` заведён (проверено 2026-07-21 с внешней машины:
+  `Test-NetConnection 5285` → True, `http://195.239.217.102:5285/login` → HTTP 200).
 - [x] Финализация docs: раздел про staging в корневом `README.md`, `docs/maintenance.md`
   (раздел 10), отметка в `CLAUDE.md`.
 
