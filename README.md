@@ -159,6 +159,10 @@ git reset --hard origin/main && docker compose -f docker-compose.staging.yml up 
 `openrouter.ai` открыт по заявке в ИТ/провайдер, генерация ответов LLM работает;
 внешний DNAT `5285→8085` заведён, портал доступен снаружи.
 
+CI/CD на GitLab (`.gitlab-ci.yml`: lint → test → build:images) зелёный с 2026-07-21,
+образ уходит в `gtl.usteel.ru:5050/usprings/usprings_rag`. Перед пушем в `main`
+прогонять `uv run ruff check .`.
+
 Детали и runbook - [`staging/deployment-plan.md`](staging/deployment-plan.md) и
 [`staging/README.md`](staging/README.md); эксплуатация - `docs/maintenance.md`, раздел 10.
 

@@ -55,28 +55,30 @@ RAG-портал (FastAPI + PostgreSQL/pgvector + BGE-m3 + OpenRouter, Docker Co
 
 ## CI/CD по аналогии
 
-Пайплайна пока нет (`.gitlab-ci.yml` отсутствует). Эталон — `../../usprings_ncr/.gitlab-ci.yml`
-(стадии **lint → test → build:images**, workflow на MR/`main`/тег, registry
-`gtl.usteel.ru:5050`, dind для сборки, теги `<short-sha>` + `latest`). Отличия rag:
+**Сделано.** `.gitlab-ci.yml` в `main` по образцу `../../usprings_ncr/.gitlab-ci.yml`:
+стадии **lint → test → build:images**, workflow на MR/`main`/тег, registry
+`gtl.usteel.ru:5050`, dind для сборки, теги `<short-sha>` + `latest`. Пайплайн на `main`
+зелёный с 2026-07-21 (145 и 146). Как устроено у rag:
 
-- **Один Python-сервис** (без отдельных `backend/`/`frontend/`): один job на lint
-  (`uv run ruff check .`) и test (`uv run pytest -q`); фронтенд серверный, отдельной
-  node-стадии не надо.
+- **Один Python-сервис** (без отдельных `backend/`/`frontend/`): по одному job на lint
+  (`uv run ruff check .`) и test (`uv run pytest -q`); фронтенд серверный, node-стадии нет.
 - **Сервис БД в тестах — `pgvector/pgvector:pg16`** (не голый `postgres:16`): нужен
-  pgvector. Прокинуть `TEST_DATABASE_URL`/миграции.
-- **РИСК теста в CI:** проверить, тянет ли `pytest` веса BGE-m3 (2,3 ГБ) или сеть —
-  в раннере это недопустимо. Если да — мокать эмбеддер / маркировать тяжёлые тесты.
-  Прогнать `uv run --no-sync pytest -q` и посмотреть зависимости до написания job.
+  pgvector. Схему поднимает `uv run alembic upgrade head` перед pytest.
+- **Риск BGE-m3 в раннере не подтвердился:** 125 тестов проходят за 17 секунд, весов
+  никто не тянет — мокать эмбеддер и маркировать тяжёлые тесты не понадобилось.
 - **build:images:** один образ `$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA` (+`latest`
   на `main`). Раннер — общий docker-executor на `195.239.217.102`.
-- После первого зелёного пайплайна включить push-mirror уже активен (GitHub-бэкап
-  создан), CI отдельно синхронизировать не нужно.
+- Push-mirror на GitHub активен, CI отдельно синхронизировать не нужно.
 
-## Открытые решения — уточнить у владельца
+Грабли, стоившие 11 красных пайплайнов подряд: **никто не смотрел результат**. Детали
+и правила эксплуатации — `deployment-plan.md`, раздел «CI/CD: включение».
 
-- Нужен ли внешний Basic Auth поверх портального логина (см. п.5).
-- Загрузка корпуса: разовый scp + ingest на сервере vs. заливка PDF из UI.
-- Zero-data-retention у OpenRouter перед выходом за пилот (см. `../docs/open-questions.md`).
+## Открытые решения — закрыты владельцем (2026-07-15)
+
+- Внешний Basic Auth поверх портального логина — **не нужен** (как у hr/crm/pps).
+- Загрузка корпуса — **разовый scp + ingest на сервере**.
+- Zero-data-retention у OpenRouter перед выходом за пилот — остаётся открытым,
+  см. `../docs/open-questions.md`.
 
 ## Ключевые файлы
 
