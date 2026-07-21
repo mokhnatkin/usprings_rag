@@ -11,7 +11,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import Chunk, Document, IndexJob, IndexJobStatus
+from ..models import Chunk, Document, IndexJob
 
 
 @dataclass

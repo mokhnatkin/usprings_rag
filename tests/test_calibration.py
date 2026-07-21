@@ -8,14 +8,21 @@
 коммита и исчезают при rollback. Нужна БД. Без неё - skip.
 """
 
+import time
+
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
+from usprings_rag import api as api_module
+from usprings_rag.admin import calibration as calibration_module
 from usprings_rag.admin.calibration import build_report, run_calibration
+from usprings_rag.api import app
 from usprings_rag.collection import Collection
 from usprings_rag.db import SessionLocal
-from usprings_rag.models import Chunk, Document
+from usprings_rag.models import Chunk, Document, Role, User
+from usprings_rag.security import hash_password
 
 ERP = Collection(code="erp", title="1С:ERP", folder="its_erp", threshold=0.58)
 ZUP = Collection(code="zup", title="1С:ЗУП", folder="its_zup", threshold=0.55)
@@ -172,16 +179,6 @@ def test_run_calibration_on_synthetic_partition(session):
 
 
 # --- Эндпоинты (super-admin, фоновый запуск со статусом) ---
-
-import time
-
-from fastapi.testclient import TestClient
-
-from usprings_rag import api as api_module
-from usprings_rag.admin import calibration as calibration_module
-from usprings_rag.api import app
-from usprings_rag.models import Role, User
-from usprings_rag.security import hash_password
 
 SUPER = "cal9super"
 PLAIN = "cal9plain"
