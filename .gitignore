@@ -36,6 +36,7 @@ staging/gitlab_deploy_token.md
 
 # Учётки портала на staging (секрет)
 staging/staging_users.txt
+staging/staging_users.md
 
 # Рабочие файлы пакетного парсинга ИТС (HTML и картинки до сборки PDF)
 docs/1C_parsing/work/
