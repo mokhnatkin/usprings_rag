@@ -153,7 +153,8 @@ base DN, атрибут логина, атрибуты профиля, тест�
 Развёрнут на `195.239.217.102` (2026-07-15): `/home/alex/usprings_rag`,
 `docker-compose.staging.yml` (host-порт 8085, внешний 5285 через DNAT провайдера).
 Корпус проиндексирован (erp 413, zup 194). Клон по GitLab Deploy Token; обновление -
-`git reset --hard origin/main` + `up -d --build`. Runbook и статус по пунктам -
+`bash staging/deploy.sh` (с 28.07.2026; прежние `reset --hard` + `up -d --build` теперь
+выкатят код на старую схему - миграции стали шагом деплоя). Runbook и статус по пунктам -
 `staging/deployment-plan.md`, эксплуатация - `docs/maintenance.md` (раздел 10).
 CI/CD (`.gitlab-ci.yml`) заведён по образцу ncr (lint/test/build); пайплайн на `main`
 зелёный с 2026-07-21 (до этого 11 красных подряд не смотрели - `ruff` не проходил
@@ -235,9 +236,18 @@ LLM - `qwen/qwen3-next-80b-a3b-instruct`
 5. **После слияния — выкат по очереди: сначала staging, потом prod.** Слияние само по
    себе на серверах не меняет ничего. У RAG **прод-контура пока нет**, поэтому очередь
    сводится к стенду (`195.239.217.102`, `/home/alex/usprings_rag`, внешний `:5285`):
-   `git reset --hard origin/main` + `docker compose -f docker-compose.staging.yml up -d
-   --build`, runbook — `staging/deployment-plan.md`, эксплуатация — `docs/maintenance.md`
-   (раздел 10). Когда появится прод — на него только после приёмки на стенде.
+   `bash staging/deploy.sh`, runbook — `staging/deployment-plan.md`, эксплуатация —
+   `docs/maintenance.md` (раздел 10). Когда появится прод — на него только после
+   приёмки на стенде.
+   **Выкат — только через `deploy.sh`, `docker compose up -d` схему не обновляет.**
+   С 28.07.2026 миграции применяются явным шагом деплоя (шаг 5), а перед ними снимается
+   `pg_dump` (шаг 4); неудачный дамп прерывает выкат. `alembic upgrade head` убран из
+   `CMD` образа — раньше он выполнялся при каждом старте контейнера, а при
+   `restart: unless-stopped` это значило, что перезагрузка хоста накатывала схему сама.
+   Это групповая политика
+   ([db_migrations_policy.md](http://gtl.usteel.ru/usprings/devops_toolkit/-/blob/main/docs/db_migrations_policy.md)),
+   и стенд выровнен по будущему проду намеренно. Расхождения staging и прода по
+   миграциям у RAG **нет** — оба контура будут работать одинаково.
    **Стенд Claude выкатывает сам** по `ssh staging`, но исключительно из PowerShell: ключ
    лежит в Windows ssh-agent, из Git Bash он не виден и `ssh` падает с
    `Permission denied (publickey,password)`. **На проде Claude команд не выполняет** —

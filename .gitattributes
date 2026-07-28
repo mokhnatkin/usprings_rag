@@ -1,0 +1,8 @@
+# Файлы, исполняемые внутри Linux-контейнеров и на сервере, всегда с LF —
+# независимо от core.autocrlf у разработчика на Windows. С CRLF ломается
+# shebang (`bash\r: bad interpreter`), причём сообщение об ошибке об этом
+# не говорит. У соседей по группе (ncr, mms, mes) то же правило.
+*.sh           text eol=lf
+Dockerfile     text eol=lf
+.dockerignore  text eol=lf
+docker-compose*.yml text eol=lf

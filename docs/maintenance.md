@@ -334,10 +334,21 @@ uv run --no-sync python eval/run_ab.py <модель-A> <модель-B> [<мо�
   11 пайплайнов подряд были красными незамеченными. Без UI - GitLab API с PAT
   (`read_api`): `/projects/usprings%2Fusprings_rag/pipelines`, `/pipelines/<id>/jobs`,
   `/jobs/<id>/trace`.
-- **Бэкап БД.** Отдельного скрипта у rag пока нет (в отличие от ncr). Разовый дамп:
+- **Выкат — только `bash staging/deploy.sh`.** С 28.07.2026 `docker compose up -d` схему
+  НЕ обновляет: `alembic upgrade head` убран из `CMD` образа и стал шагом 5 деплоя, а
+  шагом 4 перед ним снимается `pg_dump`. Неудачный дамп прерывает выкат. Это групповая
+  политика — [db_migrations_policy.md](http://gtl.usteel.ru/usprings/devops_toolkit/-/blob/main/docs/db_migrations_policy.md).
+  Раньше миграции ехали внутри образа, то есть применялись при каждом старте контейнера;
+  при `restart: unless-stopped` перезагрузка хоста накатывала их сама, ночью и без
+  наблюдения. Прода у rag ещё нет — успели до него.
+- **Бэкап БД.** Предеплойный дамп снимает сам `staging/deploy.sh` в `~/backups`
+  (`RAG_BACKUP_DIR`), хранятся последние 7 (`RAG_BACKUP_KEEP` — меньше, чем у соседей:
+  в БД лежат эмбеддинги 607 документов, копии тяжёлые). Разовый дамп вне деплоя:
   `docker compose -f docker-compose.staging.yml exec -T db pg_dump -U usprings -d
-  usprings_rag --clean --if-exists | gzip > dump.sql.gz`. Регулярный - завести cron по
-  образцу `usprings_ncr/scripts/backup.sh`. Корпус PDF бэкапить отдельно (не в git).
+  usprings_rag --clean --if-exists | gzip > dump.sql.gz`. Регулярного cron-бэкапа
+  по-прежнему нет — завести по образцу `usprings_ncr/scripts/backup.sh`; предеплойный
+  дамп его не заменяет, он привязан к выкатам, а не к календарю. Корпус PDF бэкапить
+  отдельно (не в git).
 - **Egress к OpenRouter - открыт (проверено 2026-07-21).** Ранее сеть УПЗ отдавала
   `403 "Access denied by security policy"`; после заявки в ИТ/провайдер домен внесён в
   белый список. Проверка: с хоста и изнутри контейнера `curl -o /dev/null -w '%{http_code}'
