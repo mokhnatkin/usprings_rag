@@ -14,6 +14,9 @@ RAG-портал (FastAPI + PostgreSQL/pgvector + BGE-m3 + OpenRouter, Docker Co
 ## Целевой стенд
 
 - Машина: `alex@195.239.217.102 -p 5222` (sudo, группа `docker`, docker без sudo).
+  Вход **по ключу** (публичный ключ разработчика в `~alex/.ssh/authorized_keys`,
+  пароль не нужен); удобно завести алиас `Host staging` в `~/.ssh/config`
+  (`Port 5222`, `User alex`, `IdentityFile ~/.ssh/id_rsa`) — тогда просто `ssh staging`.
   Ubuntu 26.04, Docker/Compose, **PostgreSQL 18 на хосте** (порт 5432 занят).
   Docker Hub недоступен → зеркало `mirror.gcr.io`, `ghcr.io` напрямую. За NAT.
   Полный доступ — `IT_strategy_usprings/DevOps/server_access.md`.

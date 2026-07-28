@@ -34,6 +34,9 @@ docs/1C_parsing/1C_portal_credentials.txt
 # GitLab Deploy Token для клона на staging (секрет)
 staging/gitlab_deploy_token.md
 
+# GitLab PAT для API-доступа к репозиторию (секрет)
+staging/PAT_gitlab_staging.md
+
 # Учётки портала на staging (секрет)
 staging/staging_users.txt
 staging/staging_users.md
