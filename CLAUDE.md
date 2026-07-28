@@ -218,6 +218,14 @@ LLM - `qwen/qwen3-next-80b-a3b-instruct`
 - Claude Code открывает MR сам через MCP-сервер GitLab (ветки, MR, диффы, статус
   пайплайнов). Настройка и практика работы —
   [usprings/devops_toolkit](http://gtl.usteel.ru/usprings/devops_toolkit).
+- **После слияния MR синхронизируй локальную копию**, прежде чем начинать следующую
+  доработку: `git checkout main` → `git pull --ff-only` → `git fetch --prune` →
+  `git branch -d feature/<та-самая>`. Первый шаг именно `checkout main`, а не `pull`:
+  пока стоишь на влитой feature-ветке, `git status` показывает чистоту, а `main` тихо
+  отстаёт. Если `--ff-only` отказал — ветки разошлись (так было здесь 28.07.2026,
+  `ahead 1, behind 2`): вынеси локальные коммиты в feature-ветку и оформи MR, а не
+  дави силой. Подробнее —
+  [mr_workflow.md](http://gtl.usteel.ru/usprings/devops_toolkit/-/blob/main/docs/mr_workflow.md).
 
 ## Структура (целевая, по мере роста)
 
