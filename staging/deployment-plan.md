@@ -368,16 +368,25 @@ Invoke-WebRequest http://195.239.217.102:5285/ -UseBasicParsing   # 200 / стр
 
 ## Обновление и бэкап (эксплуатация)
 
-- **Обновление кода:** на сервере из `/home/alex/usprings_rag` —
-  `git fetch --prune origin && git reset --hard origin/main &&
-  docker compose -f docker-compose.staging.yml up -d --build`. `.env`, корпус и
-  `pgdata` (gitignored/тома) не затрагиваются.
-- **Бэкап БД:** у rag своего скрипта нет (в отличие от ncr). Завести по образцу
-  `usprings_ncr/scripts/backup.sh` (ежедневный `pg_dump` контейнерной БД в
-  отдельную папку, ротация): `docker compose -f docker-compose.staging.yml exec -T
-  db pg_dump -U usprings -d usprings_rag --clean --if-exists | gzip > dump.sql.gz`,
-  cron `0 2 * * *`. Корпус PDF бэкапить отдельно (он не в git). Это добавить в
-  `docs/maintenance.md`.
+- **Обновление кода:** на сервере из `/home/alex/usprings_rag` — `bash staging/deploy.sh`.
+  `.env`, корпус и `pgdata` (gitignored/тома) не затрагиваются.
+
+  Прежняя связка `reset --hard` + `up -d --build` **больше не является полным выкатом**:
+  с 28.07.2026 миграции вынесены из `CMD` образа в шаг 5 скрипта, и такая
+  последовательность поставит новый код на старую схему — молча, до первого обращения
+  к изменённой таблице. Причина — групповая политика
+  ([db_migrations_policy.md](http://gtl.usteel.ru/usprings/devops_toolkit/-/blob/main/docs/db_migrations_policy.md)):
+  при `restart: unless-stopped` миграции в образе накатывались при каждом старте
+  контейнера, то есть и при ночной перезагрузке хоста.
+- **Предеплойный дамп** снимает сам `deploy.sh` (шаг 4) в `~/backups`, ротация — 7 копий.
+  Он гейт: при `set -euo pipefail` упавший `pg_dump` прерывает деплой, а файл
+  проверяется `gzip -t` и хвостовым маркером `pg_dump`.
+- **Регулярный бэкап БД:** по-прежнему **не заведён**. Предеплойный дамп его не
+  заменяет — он привязан к выкатам, а не к календарю: между двумя релизами копий не
+  появляется. Завести cron по образцу `usprings_ncr/scripts/backup.sh`:
+  `docker compose -f docker-compose.staging.yml exec -T db pg_dump -U usprings -d
+  usprings_rag --clean --if-exists | gzip > dump.sql.gz`, `0 2 * * *`. Корпус PDF
+  бэкапить отдельно (он не в git).
 
 ## Проверка (end-to-end)
 
