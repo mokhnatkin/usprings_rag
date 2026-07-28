@@ -44,6 +44,10 @@ staging/staging_users.md
 # Рабочие файлы пакетного парсинга ИТС (HTML и картинки до сборки PDF)
 docs/1C_parsing/work/
 
+# Производный артефакт: собирается из ldap-questions.md для отправки администраторам AD
+# (pandoc --pdf-engine=typst). Исходник .md версионируется, сборка - нет.
+docs/MVP/MVP2/ldap-questions.pdf
+
 # Полный корпус PDF из парсинга ИТС (гигабайты, пересобирается its_parse_all.py).
 # Папка = коллекция: its_erp - 1С:ERP, its_zup - 1С:ЗУП.
 docs/manuals/its_erp/*.pdf
