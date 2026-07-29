@@ -318,10 +318,13 @@ uv run --no-sync python eval/run_ab.py <модель-A> <модель-B> [<мо�
   внешнего порта (хост держит PG18 на 5432; приложение ходит на `db:5432`), обе службы
   `restart: unless-stopped`. Внешний доступ `http://195.239.217.102:5285` через DNAT
   провайдера (`5285→8085`).
-- **Обновление кода.** Из каталога репо: `git fetch --prune origin && git reset --hard
-  origin/main && docker compose -f docker-compose.staging.yml up -d --build`.
-  Tracked-файлы на сервере не править (перетрёт `reset`); секреты - только в gitignored
-  `.env` (`chmod 600`). BGE-m3, корпус и `pgdata` (том/кэш) обновление не трогает.
+- **Обновление кода — `bash staging/deploy.sh` из каталога репо.** Скрипт сам делает
+  `fetch` + `reset --hard origin/main`, снимает предеплойный дамп и **отдельным шагом
+  накатывает миграции** (подробности — в пункте «Выкат» ниже). Прежняя связка
+  `reset --hard` + `up -d --build` полным выкатом больше не является: с 28.07.2026
+  `alembic upgrade head` убран из `CMD` образа, и такой «выкат» поднимет новый код на
+  старой схеме. Tracked-файлы на сервере не править (перетрёт `reset`); секреты - только
+  в gitignored `.env` (`chmod 600`). BGE-m3, корпус и `pgdata` (том/кэш) выкат не трогает.
 - **Корпус.** PDF не в git - залит scp в `docs/manuals/{its_erp,its_zup}`, затем
   `docker compose -f docker-compose.staging.yml run --rm app ingest --collection erp|zup`
   (идемпотентно). Проиндексировано: erp 413, zup 194 документа.
