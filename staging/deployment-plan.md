@@ -13,9 +13,10 @@
 не нужен** (полагаемся на портальный логин приложения, как hr/crm/pps);
 **корпус заливаем scp + ingest на сервере**.
 
-## Статус выполнения (обновлено 2026-07-21)
+## Статус выполнения (обновлено 2026-07-29)
 
-План выполнен полностью: стенд поднят и работоспособен, CI/CD зелёный.
+План выполнен полностью: стенд поднят и работоспособен, CI/CD зелёный, генерация
+ответов работает (доступ к OpenRouter — через VPN на хосте, см. пункт про egress).
 
 - [x] Артефакты в `main`: `docker-compose.staging.yml`, `.gitlab-ci.yml`, `ruff` в dev.
 - [x] Репо клонирован на сервер (`/home/alex/usprings_rag`) по Deploy Token.
@@ -283,7 +284,8 @@ git clone https://<deploy-token-user>:<deploy-token>@gtl.usteel.ru/usprings/uspr
 cd /home/alex/usprings_rag
 ```
 
-Обновления в дальнейшем — `git fetch --prune origin && git reset --hard origin/main`.
+Обновления в дальнейшем — **`bash staging/deploy.sh`** (с 28.07.2026; `fetch` +
+`reset --hard`, дамп и миграции внутри скрипта — см. «Эксплуатация» ниже).
 Tracked-файлы на сервере не править.
 
 ### Шаг 3. Заполнить `.env` (gitignored, только на сервере)
@@ -410,6 +412,10 @@ Invoke-WebRequest http://195.239.217.102:5285/ -UseBasicParsing   # 200 / стр
 5. **Внешний доступ:** `http://195.239.217.102:5285/` открывается снаружи — OK (2026-07-21).
 6. **CI:** пайплайн на `main` зелёный (lint/test/build), образ появился в registry —
    OK (2026-07-21, пайплайн 145).
+7. **Доступ к LLM (после каждой перезагрузки хоста):** `ip route show | grep amn0` не
+   пуст (VPN поднят), `getent ahostsv4 openrouter.ai` совпадает с этими маршрутами,
+   `curl -4 -s -o /dev/null -w '%{http_code}' https://openrouter.ai/api/v1/models` → 200 —
+   OK (2026-07-29).
 
 Пункты 1-4 и 6 проверены; по пункту 3 учётные данные - `staging/staging_users.md`
 (пароль `admin` не совпадает с `SUPERADMIN_PASSWORD` в `.env`, менялся через UI).
@@ -418,4 +424,7 @@ Invoke-WebRequest http://195.239.217.102:5285/ -UseBasicParsing   # 200 / стр
 
 - Zero-data-retention у OpenRouter перед выходом за пилот (`docs/open-questions.md`).
 - Приватность LLM / соответствие политике безопасности перед продом.
+- **Доступность OpenRouter из РФ.** Стенд ходит через VPN администраторов; прод-контуру
+  понадобится такой же разрешённый выход (или шлюз, доступный из РФ). Архитектурная
+  зависимость, а не разовый инцидент — `docs/open-questions.md`.
 - Промоушен staging → prod (отдельные IP/субдомены) — вне текущего объёма.
