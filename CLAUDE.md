@@ -219,6 +219,9 @@ LLM - `qwen/qwen3-next-80b-a3b-instruct`
   или когда узнаём что-то новое от пользователя.
 - UI и тексты для пользователя - на русском (клиенты в Казахстане/РФ).
 - Без эмодзи в коде, логах и выводе.
+- Иконки и логотип (`src/usprings_rag/static/favicon.*`, `apple-touch-icon.png`, `logo.svg`) -
+  из группового комплекта `IT_strategy_usprings/brand/app_icons/dist/usprings_rag/`
+  (issue #8). Руками не править: меняется генератор комплекта, файлы копируются заново.
 
 ## Git: ветки и Merge Requests
 

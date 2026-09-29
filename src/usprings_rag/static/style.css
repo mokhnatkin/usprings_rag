@@ -109,6 +109,21 @@ input[type="password"]:focus {
 
 .nav-left a:hover { text-decoration: underline; }
 
+/* Иконка и название приложения в шапке. */
+.nav-left .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.nav-left .brand:hover { text-decoration: none; }
+
+/* Горизонтальный логотип на экране входа. */
+.login-logo { display: block; width: 100%; max-width: 360px; height: auto; margin-bottom: 1.25rem; }
+
 .topbar button {
   padding: 0.35rem 0.9rem;
   font-size: 0.85rem;
