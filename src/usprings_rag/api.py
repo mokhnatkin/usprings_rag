@@ -122,6 +122,12 @@ app.mount(
 )
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    """Иконка по корневому адресу: браузеры запрашивают её без учёта <link>."""
+    return FileResponse(PACKAGE_DIR / "static" / "favicon.ico")
+
+
 @app.get("/")
 def index(request: Request):
     """Экран вопрос-ответ. Аноним - на форму входа."""
